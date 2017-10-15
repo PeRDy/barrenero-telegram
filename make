@@ -5,6 +5,7 @@ import shlex
 import shutil
 import subprocess
 import sys
+from functools import wraps
 
 try:
     import docker
@@ -31,6 +32,18 @@ logger = logging.getLogger('cli')
 docker_cli = docker.from_env()
 
 
+def superuser(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        if not os.geteuid() == 0:
+            logger.error('Script must be run as root')
+            return -1
+
+        return func(*args, **kwargs)
+
+    return wrapper
+
+
 @command(command_type=CommandType.SHELL,
          args=((('--name',), {'help': 'Docker image name', 'default': 'barrenero-telegram'}),
                (('--tag',), {'help': 'Docker image tag', 'default': 'latest'})),
@@ -40,6 +53,14 @@ def build(*args, **kwargs):
 
     cmd = shlex.split('docker build -t {} .'.format(tag)) + list(args)
 
+    return [cmd]
+
+
+@command(command_type=CommandType.SHELL_WITH_HELP,
+         parser_opts={'help': 'Restart Systemd service'})
+@superuser
+def restart(*args, **kwargs):
+    cmd = shlex.split('service barrenero_telegram restart')
     return [cmd]
 
 
@@ -103,11 +124,8 @@ def create(*args, **kwargs):
          args=((('--path',), {'help': 'Barrenero full path', 'default': '/usr/local/lib/barrenero'}),
                (('bot_token',), {'help': 'Telegram bot token'}),),
          parser_opts={'help': 'Install the application in the system'})
+@superuser
 def install(*args, **kwargs):
-    if not os.geteuid() == 0:
-        logger.error('Script must be run as root')
-        return -1
-
     path = os.path.abspath(os.path.join(kwargs['path'], 'barrenero-telegram'))
 
     # Jinja2 builder
