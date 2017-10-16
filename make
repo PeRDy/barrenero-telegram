@@ -31,6 +31,13 @@ logger = logging.getLogger('cli')
 
 docker_cli = docker.from_env()
 
+DONATE_TEXT = '''
+This project is free and open sourced, you can use it, spread the word, contribute to the codebase and help us donating:
+* Ether: 0x566d41b925ed1d9f643748d652f4e66593cba9c9
+* Bitcoin: 1Jtj2m65DN2UsUzxXhr355x38T6pPGhqiA
+* PayPal: barrenerobot@gmail.com
+'''
+
 
 def superuser(func):
     @wraps(func)
@@ -44,10 +51,22 @@ def superuser(func):
     return wrapper
 
 
+def donate(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
+
+        logger.info(DONATE_TEXT)
+
+        return result
+    return wrapper
+
+
 @command(command_type=CommandType.SHELL,
          args=((('--name',), {'help': 'Docker image name', 'default': 'barrenero-telegram'}),
                (('--tag',), {'help': 'Docker image tag', 'default': 'latest'})),
          parser_opts={'help': 'Docker build for local environment'})
+@donate
 def build(*args, **kwargs):
     tag = '{name}:{tag}'.format(**kwargs)
 
@@ -58,6 +77,7 @@ def build(*args, **kwargs):
 
 @command(command_type=CommandType.SHELL_WITH_HELP,
          parser_opts={'help': 'Restart Systemd service'})
+@donate
 @superuser
 def restart(*args, **kwargs):
     cmd = shlex.split('service barrenero_telegram restart')
@@ -87,6 +107,7 @@ def _create_network(name):
                (('-c', '--code',), {'help': 'Add code folder as volume', 'action': 'store_true'}),
                (('-i', '--interactive'), {'help': 'Docker image tag', 'action': 'store_true'})),
          parser_opts={'help': 'Run application'})
+@donate
 def run(*args, **kwargs):
     _create_network(kwargs['network'])
     try:
@@ -108,6 +129,7 @@ def run(*args, **kwargs):
                (('--network',), {'help': 'Docker network', 'default': 'barrenero'}),
                (('-c', '--code',), {'help': 'Add code folder as volume', 'action': 'store_true'})),
          parser_opts={'help': 'Run application'})
+@donate
 def create(*args, **kwargs):
     _create_network(kwargs['network'])
     docker_cli.containers.create(
@@ -124,6 +146,7 @@ def create(*args, **kwargs):
          args=((('--path',), {'help': 'Barrenero full path', 'default': '/usr/local/lib/barrenero'}),
                (('bot_token',), {'help': 'Telegram bot token'}),),
          parser_opts={'help': 'Install the application in the system'})
+@donate
 @superuser
 def install(*args, **kwargs):
     path = os.path.abspath(os.path.join(kwargs['path'], 'barrenero-telegram'))
