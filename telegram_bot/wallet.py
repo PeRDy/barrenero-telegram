@@ -31,9 +31,10 @@ class WalletMixin:
 
                 for i, tx in zip(range(1, 4), data['transactions']):
                     response_text += f'\n\n*Last transaction #{i}*\n' \
+                                     f' - Token: `{tx["token"]["name"]}`\n' \
                                      f' - Hash: `{tx["hash"]}`\n' \
                                      f' - Source: `{tx["source"]}`\n' \
-                                     f' - Value: `{tx["value"]} ETH`\n' \
+                                     f' - Value: `{tx["value"]} {tx["token"]["symbol"]}`\n' \
                                      f' - Date: `{humanize_iso_date(tx["timestamp"])}`'
             else:
                 response_text = "Cannot retrieve wallet info"
@@ -59,9 +60,10 @@ class WalletMixin:
                             break
 
                         text = f'\n\n*Transaction completed*\n' \
+                               f' - Token: `{tx["token"]["name"]}`\n' \
                                f' - Hash: `{tx["hash"]}`\n' \
                                f' - Source: `{tx["source"]}`\n' \
-                               f' - Value: `{tx["value"]} ETH`\n' \
+                               f' - Value: `{tx["value"]} {tx["token"]["symbol"]}`\n' \
                                f' - Date: `{humanize_iso_date(tx["timestamp"])}`'
                         bot.send_message(text=text, parse_mode=ParseMode.MARKDOWN, chat_id=chat.id)
 

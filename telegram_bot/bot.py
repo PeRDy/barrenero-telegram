@@ -47,6 +47,8 @@ Lets start setting up some parameters with /start
 
 Help us donating to support this project:
  - Ether: `0x566d41b925ed1d9f643748d652f4e66593cba9c9`
+ - Bitcoin: `1Jtj2m65DN2UsUzxXhr355x38T6pPGhqiA`
+ - PayPal: `barrenerobot@gmail.com`
 """
 
     def __init__(self, config='setup.cfg'):
