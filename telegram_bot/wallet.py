@@ -1,3 +1,5 @@
+from itertools import takewhile
+
 import peewee
 import requests
 import time
@@ -55,10 +57,7 @@ class WalletMixin:
                     chat.last_transaction = first_transaction_hash
                 else:
                     # Show transactions until last known
-                    for tx in data['transactions']:
-                        if tx['hash'] == chat.last_transaction:
-                            break
-
+                    for tx in takewhile(lambda x: x['hash'] != chat.last_transaction, data['transactions']):
                         text = f'\n\n*Transaction completed*\n' \
                                f' - Token: `{tx["token"]["name"]}`\n' \
                                f' - Hash: `{tx["hash"]}`\n' \
@@ -77,7 +76,7 @@ class WalletMixin:
         self.dispatcher.add_handler(CommandHandler('wallet', self.wallet))
 
     def add_wallet_jobs(self):
-        self.updater.job_queue.run_repeating(self.wallet_job_transactions, 300.0)
+        self.updater.job_queue.run_repeating(self.wallet_job_transactions, 900.0)
 
     def _wallet_query(self, chat: 'Chat'):
         try:
