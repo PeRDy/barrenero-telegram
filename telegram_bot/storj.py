@@ -88,7 +88,7 @@ class StorjMixin:
                         f' - Uptime: `{node["uptime"]} ({node["restarts"]} restarts)`\n'
                         f' - Shared: `{shared} ({shared_percent})`\n'
                         f' - Data received: `{data_received}`\n'
-                        f' - Peers/Offers: `{node["peers"]:d}` / `{node["offers"]:d}`\n'
+                        f' - Peers/Allocs: `{node["peers"]:d}` / `{node["allocs"]:d}`\n'
                         f' - Delta: `{delta}`\n'
                         f' - Path: `{node["config_path"]}`')
                 response_text = '\n\n'.join(node_texts)
