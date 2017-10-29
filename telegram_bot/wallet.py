@@ -1,8 +1,8 @@
+import time
 from itertools import takewhile
 
 import peewee
 import requests
-import time
 from telegram import ChatAction
 from telegram.ext import CommandHandler
 from telegram.parsemode import ParseMode
@@ -28,8 +28,9 @@ class WalletMixin:
         else:
             if data:
                 response_text = f'*Tokens*\n'
-                response_text += '\n'.join([f' - {t["name"]}: `{t["balance"]} {t["symbol"]}` ({t["balance_usd"]} $)'
-                                            for t in data['tokens'].values()])
+                response_text += '\n'.join(
+                    [f' - {t["name"]}: `{t["balance"]} {t["symbol"]}` ({t.get("balance_usd", "Unknown")} $)'
+                     for t in data['tokens'].values()])
 
                 for i, tx in zip(range(1, 4), data['transactions']):
                     response_text += f'\n\n*Last transaction #{i}*\n' \
