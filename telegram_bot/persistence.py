@@ -34,6 +34,7 @@ class Chat(BaseModel):
 
 
 class API(BaseModel):
+    name = peewee.CharField(verbose_name='name', help_text='Barrenero API name')
     url = peewee.CharField(verbose_name='url', help_text='Barrenero API url')
     token = peewee.CharField(verbose_name='API token', help_text='Barrenero API token')
     superuser = peewee.BooleanField(verbose_name='API superuser', help_text='Is a superuser in Barrenero API',

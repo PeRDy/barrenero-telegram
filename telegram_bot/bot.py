@@ -19,18 +19,20 @@ class StartState(IntEnum):
     CHOICE_ROOT = 1
     CHOICE_ADD_API = 2
     CHOICE_URL = 3
-    CHOICE_USERNAME = 4
-    CHOICE_PASSWORD = 5
-    CHOICE_WALLET = 6
-    CHOICE_SUPERUSER = 7
-    CHOICE_REMOVE_API = 8
+    CHOICE_NAME = 4
+    CHOICE_USERNAME = 5
+    CHOICE_PASSWORD = 6
+    CHOICE_WALLET = 7
+    CHOICE_SUPERUSER = 8
+    CHOICE_REMOVE_API = 9
 
 
 class StartOptions(Enum):
     ADD_API = 'Add API'
     REMOVE_API = 'Remove API'
     CURRENT_CONFIG = 'Show current config'
-    URL = 'URL'
+    URL = 'API URL'
+    NAME = 'API Name'
     USERNAME = 'Username'
     PASSWORD = 'Password'
     WALLET = 'Wallet'
@@ -104,7 +106,8 @@ Help us donating to support this project:
         Asks for a new Barrenero API config.
         """
         keyboard = (
-            (StartOptions.URL.value, StartOptions.USERNAME.value, StartOptions.PASSWORD.value),
+            (StartOptions.URL.value, StartOptions.NAME.value),
+            (StartOptions.USERNAME.value, StartOptions.PASSWORD.value),
             (StartOptions.WALLET.value, StartOptions.SUPERUSER.value),
             (StartOptions.CURRENT_CHANGES.value, StartOptions.DONE.value)
         )
@@ -122,6 +125,14 @@ Help us donating to support this project:
         update.message.reply_text('Introduce the *url* from Barrenero API', parse_mode=ParseMode.MARKDOWN)
 
         return StartState.CHOICE_URL
+
+    def choice_name(self, bot, update):
+        """
+        Asks for Barrenero API name.
+        """
+        update.message.reply_text('Introduce the *name* for Barrenero API', parse_mode=ParseMode.MARKDOWN)
+
+        return StartState.CHOICE_NAME
 
     def choice_username(self, bot, update):
         """
@@ -165,13 +176,27 @@ Help us donating to support this project:
         tmp_config = self.tmp_config.get(chat_id, {})
 
         response_text = f'*New Configuration*\n' \
-                        f' - API: `{tmp_config.get("url", "Not configured")}`\n' \
+                        f' - URL: `{tmp_config.get("url", "Not configured")}`\n' \
+                        f' - Name: `{tmp_config.get("name", "Not configured")}`\n' \
                         f' - Username: `{tmp_config.get("username", "Not configured")}`\n' \
                         f' - Password: `{tmp_config.get("password", "Not configured")}`\n' \
                         f' - Wallet: `{tmp_config.get("wallet", "Not configured")}`\n' \
                         f' - Superuser password: `{tmp_config.get("api_password", "Not configured")}`'
 
         update.message.reply_text(response_text, parse_mode=ParseMode.MARKDOWN)
+
+        return StartState.CHOICE_ADD_API
+
+    def config_name(self, bot, update):
+        text = update.message.text
+        chat_id = update.message.chat_id
+
+        if chat_id not in self.tmp_config:
+            self.tmp_config[chat_id] = {}
+
+        self.tmp_config[chat_id]['name'] = text
+
+        update.message.reply_text('Keep Barrenero API *name*', parse_mode=ParseMode.MARKDOWN)
 
         return StartState.CHOICE_ADD_API
 
@@ -258,6 +283,7 @@ Help us donating to support this project:
 
     def _get_token_or_register(self, chat_id):
         api_url = self.tmp_config[chat_id]['url']
+        api_name = self.tmp_config[chat_id].get('name')
         username = self.tmp_config[chat_id]['username'],
         password = self.tmp_config[chat_id]['password'],
         account = self.tmp_config[chat_id].get('wallet'),
@@ -286,6 +312,7 @@ Help us donating to support this project:
         else:
             config = {
                 'url': api_url,
+                'name': api_name,
                 'token': payload['token'],
                 'superuser': payload['is_api_superuser'],
             }
@@ -303,7 +330,8 @@ Help us donating to support this project:
 
             config = self._get_token_or_register(chat_id)
 
-            API.create(url=config['url'], token=config['token'], superuser=config['superuser'], chat=chat)
+            API.create(name=config['name'], url=config['url'], token=config['token'], superuser=config['superuser'],
+                       chat=chat)
         except:
             self.logger.exception('Cannot register Barrenero API')
         else:
@@ -365,6 +393,7 @@ Help us donating to support this project:
 
             for i, api in enumerate(chat.apis, 1):
                 response_text += f'*API #{i}*\n' \
+                                 f' - Name: `{api.name}`\n' \
                                  f' - URL: `{api.url}`\n' \
                                  f' - Token: `{api.token}`\n' \
                                  f' - Superuser: `{"Yes" if api.superuser else "No"}`\n\n'
@@ -405,6 +434,7 @@ Help us donating to support this project:
                 ],
                 StartState.CHOICE_ADD_API: [
                     RegexHandler(f'^{StartOptions.URL.value}$', self.choice_url),
+                    RegexHandler(f'^{StartOptions.NAME.value}$', self.choice_name),
                     RegexHandler(f'^{StartOptions.USERNAME.value}$', self.choice_username),
                     RegexHandler(f'^{StartOptions.PASSWORD.value}$', self.choice_password),
                     RegexHandler(f'^{StartOptions.WALLET.value}$', self.choice_wallet),
@@ -418,6 +448,9 @@ Help us donating to support this project:
                 ],
                 StartState.CHOICE_URL: [
                     MessageHandler(Filters.text, self.config_url)
+                ],
+                StartState.CHOICE_NAME: [
+                    MessageHandler(Filters.text, self.config_name)
                 ],
                 StartState.CHOICE_USERNAME: [
                     MessageHandler(Filters.text, self.config_username)
