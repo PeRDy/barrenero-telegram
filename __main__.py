@@ -7,7 +7,7 @@ import time
 from clinner.command import Type, command
 from clinner.run import Main as ClinnerMain
 
-from telegram_bot.bot import TelegramBot
+from bot.bot import TelegramBot
 
 
 class UTCFormatter(logging.Formatter):

@@ -3,9 +3,9 @@ import requests
 from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from telegram_bot.persistence import Chat
-from telegram_bot.state_machine import StatusState, StatusStateMachine
-from telegram_bot.utils import humanize_iso_date
+from bot.models import Chat
+from bot.state_machine import StatusState, StatusStateMachine
+from bot.utils import humanize_iso_date
 
 
 class EtherMixin:

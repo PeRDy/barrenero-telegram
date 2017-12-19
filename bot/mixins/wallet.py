@@ -7,8 +7,8 @@ from telegram import ChatAction
 from telegram.ext import CommandHandler
 from telegram.parsemode import ParseMode
 
-from telegram_bot.persistence import Chat
-from telegram_bot.utils import humanize_iso_date
+from bot.models import Chat
+from bot.utils import humanize_iso_date
 
 
 class WalletMixin:

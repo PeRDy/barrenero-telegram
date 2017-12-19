@@ -3,7 +3,7 @@ import requests
 from telegram import ChatAction, ParseMode
 from telegram.ext import CommandHandler
 
-from telegram_bot.persistence import Chat
+from bot.models import Chat
 
 
 class MinerMixin:

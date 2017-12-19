@@ -3,8 +3,8 @@ import requests
 from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from telegram_bot.persistence import Chat, API
-from telegram_bot.state_machine import StatusStateMachine
+from bot.models import Chat, API
+from bot.state_machine import StatusStateMachine
 
 
 class StorjMixin:

@@ -1,18 +1,12 @@
-import logging
-from configparser import ConfigParser
 from enum import Enum, IntEnum
 
 import peewee
-import requests
 from telegram import ParseMode, ReplyKeyboardMarkup
-from telegram.ext import CommandHandler, ConversationHandler, Filters, MessageHandler, Updater
+from telegram.ext import CommandHandler, ConversationHandler, Filters, MessageHandler
 from telegram.ext.regexhandler import RegexHandler
 
-from telegram_bot.ether import EtherMixin
-from telegram_bot.miner import MinerMixin
-from telegram_bot.persistence import Chat, initialize_db, API
-from telegram_bot.storj import StorjMixin
-from telegram_bot.wallet import WalletMixin
+from bot.api import Barrenero
+from bot.models import API, Chat
 
 
 class StartState(IntEnum):
@@ -42,51 +36,10 @@ class StartOptions(Enum):
     FINISH = 'Finish'
 
 
-class TelegramBot(MinerMixin, EtherMixin, StorjMixin, WalletMixin):
-    HELP_TEXT = """I can show you Barrenero's current status, as well as some information of different services related.
-
-Lets start setting up some parameters with /start
-
-*Barrenero*
-/miner - Barrenero's current status.
-
-*Services*
-/ether - Ether Miner info.
-/storj - Storj Miner info.
-/wallet - Ethereum Wallet balance.
-
-Help us donating to support this project:
- - Ether: `0x566d41b925ed1d9f643748d652f4e66593cba9c9`
- - Bitcoin: `1Jtj2m65DN2UsUzxXhr355x38T6pPGhqiA`
- - PayPal: `barrenerobot@gmail.com`
-"""
-
-    def __init__(self, config='setup.cfg'):
-        # Read bot config from file
-        config_from_file = ConfigParser()
-        config_from_file.read(config)
-        self._telegram_token = config_from_file.get('telegram', 'token', fallback=None)
-        self._max_idle = config_from_file.getint('telegram', 'max_idle', fallback=None)
-
-        # Initialize DB
-        initialize_db()
-
-        # Store for chat based config, loaded from database
-        self.tmp_config = {}  # Config dict for keeping temporal data before registering in API
-
-        self.logger = logging.getLogger('telegram')
-
-        self.updater = Updater(token=self._telegram_token)
-        self.dispatcher = self.updater.dispatcher
-
-    def help(self, bot, update):
-        """
-        Shows help message.
-        """
-        chat_id = update.message.chat_id
-        bot.send_message(chat_id, self.HELP_TEXT, parse_mode=ParseMode.MARKDOWN)
-
-        return StartState.CHOICE_ROOT
+class StartMixin:
+    def __init__(self):
+        # Config dict for keeping temporal data before registering in API
+        self.tmp_config = {}
 
     def start(self, bot, update):
         """
@@ -101,7 +54,7 @@ Help us donating to support this project:
 
         return StartState.CHOICE_ROOT
 
-    def choice_add_api(self, bot, update):
+    def _add_api_choice(self, bot, update):
         """
         Asks for a new Barrenero API config.
         """
@@ -118,7 +71,7 @@ Help us donating to support this project:
 
         return StartState.CHOICE_ADD_API
 
-    def choice_url(self, bot, update):
+    def _add_api_choice_url(self, bot, update):
         """
         Asks for Barrenero API url.
         """
@@ -126,7 +79,7 @@ Help us donating to support this project:
 
         return StartState.CHOICE_URL
 
-    def choice_name(self, bot, update):
+    def _add_api_choice_name(self, bot, update):
         """
         Asks for Barrenero API name.
         """
@@ -134,7 +87,7 @@ Help us donating to support this project:
 
         return StartState.CHOICE_NAME
 
-    def choice_username(self, bot, update):
+    def _add_api_choice_username(self, bot, update):
         """
         Asks for username.
         """
@@ -142,7 +95,7 @@ Help us donating to support this project:
 
         return StartState.CHOICE_USERNAME
 
-    def choice_password(self, bot, update):
+    def _add_api_choice_password(self, bot, update):
         """
         Asks for password.
         """
@@ -151,7 +104,7 @@ Help us donating to support this project:
 
         return StartState.CHOICE_PASSWORD
 
-    def choice_wallet(self, bot, update):
+    def _add_api_choice_wallet(self, bot, update):
         """
         Asks for nanopool token.
         """
@@ -160,7 +113,7 @@ Help us donating to support this project:
 
         return StartState.CHOICE_WALLET
 
-    def choice_superuser(self, bot, update):
+    def _add_api_choice_superuser(self, bot, update):
         """
         Asks for etherscan token.
         """
@@ -168,7 +121,7 @@ Help us donating to support this project:
 
         return StartState.CHOICE_SUPERUSER
 
-    def choice_current_changes(self, bot, update):
+    def _add_api_choice_current_changes(self, bot, update):
         """
         Shows current config.
         """
@@ -187,20 +140,7 @@ Help us donating to support this project:
 
         return StartState.CHOICE_ADD_API
 
-    def config_name(self, bot, update):
-        text = update.message.text
-        chat_id = update.message.chat_id
-
-        if chat_id not in self.tmp_config:
-            self.tmp_config[chat_id] = {}
-
-        self.tmp_config[chat_id]['name'] = text
-
-        update.message.reply_text('Keep Barrenero API *name*', parse_mode=ParseMode.MARKDOWN)
-
-        return StartState.CHOICE_ADD_API
-
-    def config_url(self, bot, update):
+    def _add_api_config_url(self, bot, update):
         text = update.message.text
         chat_id = update.message.chat_id
 
@@ -216,7 +156,20 @@ Help us donating to support this project:
 
         return StartState.CHOICE_ADD_API
 
-    def config_username(self, bot, update):
+    def _add_api_config_name(self, bot, update):
+        text = update.message.text
+        chat_id = update.message.chat_id
+
+        if chat_id not in self.tmp_config:
+            self.tmp_config[chat_id] = {}
+
+        self.tmp_config[chat_id]['name'] = text
+
+        update.message.reply_text('Keep Barrenero API *name*', parse_mode=ParseMode.MARKDOWN)
+
+        return StartState.CHOICE_ADD_API
+
+    def _add_api_config_username(self, bot, update):
         text = update.message.text
         chat_id = update.message.chat_id
 
@@ -229,7 +182,7 @@ Help us donating to support this project:
 
         return StartState.CHOICE_ADD_API
 
-    def config_password(self, bot, update):
+    def _add_api_config_password(self, bot, update):
         text = update.message.text
         chat_id = update.message.chat_id
 
@@ -242,7 +195,7 @@ Help us donating to support this project:
 
         return StartState.CHOICE_ADD_API
 
-    def config_wallet(self, bot, update):
+    def _add_api_config_wallet(self, bot, update):
         """
         Sets wallet configuration for this chat.
         """
@@ -268,7 +221,7 @@ Help us donating to support this project:
 
         return StartState.CHOICE_ADD_API
 
-    def config_superuser(self, bot, update):
+    def _add_api_config_superuser(self, bot, update):
         text = update.message.text
         chat_id = update.message.chat_id
 
@@ -281,45 +234,7 @@ Help us donating to support this project:
 
         return StartState.CHOICE_ADD_API
 
-    def _get_token_or_register(self, chat_id):
-        api_url = self.tmp_config[chat_id]['url']
-        api_name = self.tmp_config[chat_id].get('name')
-        username = self.tmp_config[chat_id]['username'],
-        password = self.tmp_config[chat_id]['password'],
-        account = self.tmp_config[chat_id].get('wallet'),
-        api_password = self.tmp_config[chat_id].get('api_password'),
-
-        try:
-            # Try to register user
-            url = f'{api_url}/api/v1/auth/register/'
-            data = {'username': username, 'password': password, 'account': account, 'api_password': api_password}
-            response_register = requests.post(url=url, data=data)
-
-            # If user is registered, try to get token using username and password
-            if response_register.status_code == 409:
-                url = f'{api_url}/api/v1/auth/user/'
-                data = {'username': username, 'password': password}
-
-                response_user = requests.post(url=url, data=data)
-                response_user.raise_for_status()
-                payload = response_user.json()
-            else:
-                response_register.raise_for_status()
-                payload = response_register.json()
-        except requests.HTTPError:
-            self.logger.exception('Cannot retrieve Barrenero API token')
-            raise
-        else:
-            config = {
-                'url': api_url,
-                'name': api_name,
-                'token': payload['token'],
-                'superuser': payload['is_api_superuser'],
-            }
-
-        return config
-
-    def add_api(self, bot, update):
+    def _add_api_config_done(self, bot, update):
         """
         Adds configured api.
         """
@@ -328,10 +243,21 @@ Help us donating to support this project:
         try:
             chat, _ = Chat.get_or_create(id=chat_id, defaults={'last_transaction': None})
 
-            config = self._get_token_or_register(chat_id)
+            config = Barrenero.get_token_or_register(
+                url=self.tmp_config[chat_id]['url'],
+                username=self.tmp_config[chat_id]['username'],
+                password=self.tmp_config[chat_id]['password'],
+                account=self.tmp_config[chat_id]['wallet'],
+                api_password=self.tmp_config[chat_id]['api_password'],
+            )
 
-            API.create(name=config['name'], url=config['url'], token=config['token'], superuser=config['superuser'],
-                       chat=chat)
+            API.create(
+                name=self.tmp_config[chat_id]['name'],
+                url=self.tmp_config[chat_id]['url'],
+                token=config['token'],
+                superuser=config['superuser'],
+                chat=chat
+            )
         except:
             self.logger.exception('Cannot register Barrenero API')
         else:
@@ -339,7 +265,7 @@ Help us donating to support this project:
 
         return self.start(bot, update)
 
-    def choice_remove_api(self, bot, update):
+    def _remove_api_choice(self, bot, update):
         """
         Asks for removing a Barrenero API already configured.
         """
@@ -364,20 +290,23 @@ Help us donating to support this project:
 
         return result
 
-    def remove_api(self, bot, update):
+    def _remove_api_config(self, bot, update):
         text = update.message.text
         chat_id = update.message.chat_id
 
         try:
             chat = Chat.get(id=chat_id)
-            API.get(id=text, chat=chat).delete_instance()
+            api = API.get(id=text, chat=chat)
+            name = api.name
+            api.delete_instance()
+            update.message.reply_text(f'Barrenero API `{name}` removed successfully')
         except:
             self.logger.exception('Cannot remove Barrenero API')
             update.message.reply_text('Cannot remove Barrenero API')
 
         return StartState.CHOICE_REMOVE_API
 
-    def choice_current_config(self, bot, update):
+    def _current_config_choice(self, bot, update):
         """
         Shows current config.
         """
@@ -402,7 +331,7 @@ Help us donating to support this project:
 
         return StartState.CHOICE_ROOT
 
-    def config_done(self, bot, update):
+    def _config_done_choice(self, bot, update):
         """
         Finishes configuration process.
         """
@@ -410,85 +339,54 @@ Help us donating to support this project:
 
         return ConversationHandler.END
 
-    def error(self, bot, update, error):
-        """
-        Error handler.
-        """
-        self.logger.error('Update "%s" caused error "%s"', update, error)
-
-    def run(self):
+    def add_start_command(self):
         """
         Setup the bot
         """
-        # Help command
-        self.dispatcher.add_handler(CommandHandler('help', self.help))
-
         # Start command
         self.dispatcher.add_handler(ConversationHandler(
             entry_points=[CommandHandler('start', self.start)],
             states={
                 StartState.CHOICE_ROOT: [
-                    RegexHandler(f'^{StartOptions.ADD_API.value}$', self.choice_add_api),
-                    RegexHandler(f'^{StartOptions.REMOVE_API.value}$', self.choice_remove_api),
-                    RegexHandler(f'^{StartOptions.CURRENT_CONFIG.value}$', self.choice_current_config),
+                    RegexHandler(f'^{StartOptions.ADD_API.value}$', self._add_api_choice),
+                    RegexHandler(f'^{StartOptions.REMOVE_API.value}$', self._remove_api_choice),
+                    RegexHandler(f'^{StartOptions.CURRENT_CONFIG.value}$', self._current_config_choice),
                 ],
                 StartState.CHOICE_ADD_API: [
-                    RegexHandler(f'^{StartOptions.URL.value}$', self.choice_url),
-                    RegexHandler(f'^{StartOptions.NAME.value}$', self.choice_name),
-                    RegexHandler(f'^{StartOptions.USERNAME.value}$', self.choice_username),
-                    RegexHandler(f'^{StartOptions.PASSWORD.value}$', self.choice_password),
-                    RegexHandler(f'^{StartOptions.WALLET.value}$', self.choice_wallet),
-                    RegexHandler(f'^{StartOptions.SUPERUSER.value}$', self.choice_superuser),
-                    RegexHandler(f'^{StartOptions.CURRENT_CONFIG.value}$', self.choice_current_changes),
-                    RegexHandler(f'^{StartOptions.DONE.value}$', self.add_api),
+                    RegexHandler(f'^{StartOptions.URL.value}$', self._add_api_choice_url),
+                    RegexHandler(f'^{StartOptions.NAME.value}$', self._add_api_choice_name),
+                    RegexHandler(f'^{StartOptions.USERNAME.value}$', self._add_api_choice_username),
+                    RegexHandler(f'^{StartOptions.PASSWORD.value}$', self._add_api_choice_password),
+                    RegexHandler(f'^{StartOptions.WALLET.value}$', self._add_api_choice_wallet),
+                    RegexHandler(f'^{StartOptions.SUPERUSER.value}$', self._add_api_choice_superuser),
+                    RegexHandler(f'^{StartOptions.CURRENT_CONFIG.value}$', self._add_api_choice_current_changes),
+                    RegexHandler(f'^{StartOptions.DONE.value}$', self._add_api_config_done),
                 ],
                 StartState.CHOICE_REMOVE_API: [
                     RegexHandler(f'^{StartOptions.DONE.value}$', self.start),
-                    MessageHandler(Filters.text, self.remove_api),
+                    MessageHandler(Filters.text, self._remove_api_config),
                 ],
                 StartState.CHOICE_URL: [
-                    MessageHandler(Filters.text, self.config_url)
+                    MessageHandler(Filters.text, self._add_api_config_url)
                 ],
                 StartState.CHOICE_NAME: [
-                    MessageHandler(Filters.text, self.config_name)
+                    MessageHandler(Filters.text, self._add_api_config_name)
                 ],
                 StartState.CHOICE_USERNAME: [
-                    MessageHandler(Filters.text, self.config_username)
+                    MessageHandler(Filters.text, self._add_api_config_username)
                 ],
                 StartState.CHOICE_PASSWORD: [
-                    MessageHandler(Filters.text, self.config_password)
+                    MessageHandler(Filters.text, self._add_api_config_password)
                 ],
                 StartState.CHOICE_WALLET: [
-                    MessageHandler(Filters.text, self.config_wallet)
+                    MessageHandler(Filters.text, self._add_api_config_wallet)
                 ],
                 StartState.CHOICE_SUPERUSER: [
-                    MessageHandler(Filters.text, self.config_superuser)
+                    MessageHandler(Filters.text, self._add_api_config_superuser)
                 ]
             },
-            fallbacks=[RegexHandler(f'^{StartOptions.FINISH.value}$', self.config_done)]
+            fallbacks=[RegexHandler(f'^{StartOptions.FINISH.value}$', self._config_done_choice)]
         ))
 
-        # Miner command
-        # self.add_miner_command()
 
-        # Ether command
-        # self.add_ether_command()
-        # self.add_ether_jobs()
 
-        # Storj command
-        self.add_storj_command()
-        self.add_storj_jobs()
-
-        # Wallet command
-        self.add_wallet_command()
-        self.add_wallet_jobs()
-
-        # Error handler
-        self.dispatcher.add_error_handler(self.error)
-
-        try:
-            self.updater.start_polling()
-
-            self.updater.idle()
-        except:
-            self.updater.stop()
