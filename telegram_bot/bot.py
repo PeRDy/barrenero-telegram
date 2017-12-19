@@ -10,26 +10,34 @@ from telegram.ext.regexhandler import RegexHandler
 
 from telegram_bot.ether import EtherMixin
 from telegram_bot.miner import MinerMixin
-from telegram_bot.persistence import Chat, initialize_db
+from telegram_bot.persistence import Chat, initialize_db, API
 from telegram_bot.storj import StorjMixin
 from telegram_bot.wallet import WalletMixin
 
 
 class StartState(IntEnum):
-    CHOOSING = 1
-    CHOICE_USERNAME = 2
-    CHOICE_PASSWORD = 3
-    CHOICE_WALLET = 4
-    CHOICE_SUPERUSER = 5
+    CHOICE_ROOT = 1
+    CHOICE_ADD_API = 2
+    CHOICE_URL = 3
+    CHOICE_USERNAME = 4
+    CHOICE_PASSWORD = 5
+    CHOICE_WALLET = 6
+    CHOICE_SUPERUSER = 7
+    CHOICE_REMOVE_API = 8
 
 
 class StartOptions(Enum):
+    ADD_API = 'Add API'
+    REMOVE_API = 'Remove API'
+    CURRENT_CONFIG = 'Show current config'
+    URL = 'URL'
     USERNAME = 'Username'
     PASSWORD = 'Password'
     WALLET = 'Wallet'
     SUPERUSER = 'Superuser'
-    CURRENT_CONFIG = 'Show current config'
+    CURRENT_CHANGES = 'Show current changes'
     DONE = 'Done!'
+    FINISH = 'Finish'
 
 
 class TelegramBot(MinerMixin, EtherMixin, StorjMixin, WalletMixin):
@@ -57,7 +65,6 @@ Help us donating to support this project:
         config_from_file.read(config)
         self._telegram_token = config_from_file.get('telegram', 'token', fallback=None)
         self._max_idle = config_from_file.getint('telegram', 'max_idle', fallback=None)
-        self._api = config_from_file.get('telegram', 'api', fallback='http://localhost')
 
         # Initialize DB
         initialize_db()
@@ -77,21 +84,44 @@ Help us donating to support this project:
         chat_id = update.message.chat_id
         bot.send_message(chat_id, self.HELP_TEXT, parse_mode=ParseMode.MARKDOWN)
 
-        return StartState.CHOOSING
+        return StartState.CHOICE_ROOT
 
     def start(self, bot, update):
         """
         Start bot configuration.
         """
-        keyboard = ((StartOptions.USERNAME.value, StartOptions.PASSWORD.value, StartOptions.WALLET.value,
-                     StartOptions.SUPERUSER.value),
-                    (StartOptions.CURRENT_CONFIG.value, StartOptions.DONE.value,))
+        keyboard = ((StartOptions.ADD_API.value,),
+                    (StartOptions.REMOVE_API.value,),
+                    (StartOptions.CURRENT_CONFIG.value, StartOptions.FINISH.value,))
         markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
 
-        update.message.reply_text("Hello! Before we can start working we'll need to configure some parameters.\n"
+        update.message.reply_text('Select an option.', reply_markup=markup)
+
+        return StartState.CHOICE_ROOT
+
+    def choice_add_api(self, bot, update):
+        """
+        Asks for a new Barrenero API config.
+        """
+        keyboard = (
+            (StartOptions.URL.value, StartOptions.USERNAME.value, StartOptions.PASSWORD.value),
+            (StartOptions.WALLET.value, StartOptions.SUPERUSER.value),
+            (StartOptions.CURRENT_CHANGES.value, StartOptions.DONE.value)
+        )
+        markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
+
+        update.message.reply_text("We need to specify some parameters to add a new Barrenero API.\n"
                                   'Select an option.', reply_markup=markup)
 
-        return StartState.CHOOSING
+        return StartState.CHOICE_ADD_API
+
+    def choice_url(self, bot, update):
+        """
+        Asks for Barrenero API url.
+        """
+        update.message.reply_text('Introduce the *url* from Barrenero API', parse_mode=ParseMode.MARKDOWN)
+
+        return StartState.CHOICE_URL
 
     def choice_username(self, bot, update):
         """
@@ -127,32 +157,39 @@ Help us donating to support this project:
 
         return StartState.CHOICE_SUPERUSER
 
-    def choice_current_config(self, bot, update):
+    def choice_current_changes(self, bot, update):
         """
         Shows current config.
         """
         chat_id = update.message.chat_id
         tmp_config = self.tmp_config.get(chat_id, {})
 
-        try:
-            chat = Chat.get(id=chat_id)
-        except peewee.DoesNotExist:
-            response_text = ''
-        else:
-            response_text = f'*Current config*\n' \
-                            f'API Token: `{chat.token}`\n' \
-                            f'Superuser: `{"Yes" if chat.superuser else "No"}`\n' \
-                            f'Last Transaction: `{chat.last_transaction}`\n\n'
-
-        response_text += f'*New Configuration*\n' \
-                         f'Username: `{tmp_config.get("username", "Not configured")}`\n' \
-                         f'Password: `{tmp_config.get("password", "Not configured")}`\n' \
-                         f'Wallet: `{tmp_config.get("wallet", "Not configured")}`\n' \
-                         f'Superuser password: `{tmp_config.get("api_password", "Not configured")}`'
+        response_text = f'*New Configuration*\n' \
+                        f' - API: `{tmp_config.get("url", "Not configured")}`\n' \
+                        f' - Username: `{tmp_config.get("username", "Not configured")}`\n' \
+                        f' - Password: `{tmp_config.get("password", "Not configured")}`\n' \
+                        f' - Wallet: `{tmp_config.get("wallet", "Not configured")}`\n' \
+                        f' - Superuser password: `{tmp_config.get("api_password", "Not configured")}`'
 
         update.message.reply_text(response_text, parse_mode=ParseMode.MARKDOWN)
 
-        return StartState.CHOOSING
+        return StartState.CHOICE_ADD_API
+
+    def config_url(self, bot, update):
+        text = update.message.text
+        chat_id = update.message.chat_id
+
+        if chat_id not in self.tmp_config:
+            self.tmp_config[chat_id] = {}
+
+        if text[-1] == '/':
+            text = text[:-1]
+
+        self.tmp_config[chat_id]['url'] = text
+
+        update.message.reply_text('Keep Barrenero API *url*', parse_mode=ParseMode.MARKDOWN)
+
+        return StartState.CHOICE_ADD_API
 
     def config_username(self, bot, update):
         text = update.message.text
@@ -165,7 +202,7 @@ Help us donating to support this project:
 
         update.message.reply_text('Keep *username* for registering in API', parse_mode=ParseMode.MARKDOWN)
 
-        return StartState.CHOOSING
+        return StartState.CHOICE_ADD_API
 
     def config_password(self, bot, update):
         text = update.message.text
@@ -178,7 +215,7 @@ Help us donating to support this project:
 
         update.message.reply_text('Keep *password* for registering in API', parse_mode=ParseMode.MARKDOWN)
 
-        return StartState.CHOOSING
+        return StartState.CHOICE_ADD_API
 
     def config_wallet(self, bot, update):
         """
@@ -204,7 +241,7 @@ Help us donating to support this project:
 
         update.message.reply_text(response_text, parse_mode=ParseMode.MARKDOWN)
 
-        return StartState.CHOOSING
+        return StartState.CHOICE_ADD_API
 
     def config_superuser(self, bot, update):
         text = update.message.text
@@ -217,9 +254,10 @@ Help us donating to support this project:
 
         update.message.reply_text('Keep *superuser password* for registering in API', parse_mode=ParseMode.MARKDOWN)
 
-        return StartState.CHOOSING
+        return StartState.CHOICE_ADD_API
 
     def _get_token_or_register(self, chat_id):
+        api_url = self.tmp_config[chat_id]['url']
         username = self.tmp_config[chat_id]['username'],
         password = self.tmp_config[chat_id]['password'],
         account = self.tmp_config[chat_id].get('wallet'),
@@ -227,13 +265,13 @@ Help us donating to support this project:
 
         try:
             # Try to register user
-            url = f'{self._api}/api/v1/auth/register'
+            url = f'{api_url}/api/v1/auth/register/'
             data = {'username': username, 'password': password, 'account': account, 'api_password': api_password}
             response_register = requests.post(url=url, data=data)
 
             # If user is registered, try to get token using username and password
             if response_register.status_code == 409:
-                url = f'{self._api}/api/v1/auth/user'
+                url = f'{api_url}/api/v1/auth/user/'
                 data = {'username': username, 'password': password}
 
                 response_user = requests.post(url=url, data=data)
@@ -244,30 +282,104 @@ Help us donating to support this project:
                 payload = response_register.json()
         except requests.HTTPError:
             self.logger.exception('Cannot retrieve Barrenero API token')
-            config = None
+            raise
         else:
             config = {
+                'url': api_url,
                 'token': payload['token'],
                 'superuser': payload['is_api_superuser'],
             }
 
         return config
 
+    def add_api(self, bot, update):
+        """
+        Adds configured api.
+        """
+        chat_id = update.message.chat_id
+
+        try:
+            chat, _ = Chat.get_or_create(id=chat_id, defaults={'last_transaction': None})
+
+            config = self._get_token_or_register(chat_id)
+
+            API.create(url=config['url'], token=config['token'], superuser=config['superuser'], chat=chat)
+        except:
+            self.logger.exception('Cannot register Barrenero API')
+        else:
+            update.message.reply_text('Api stored successfully')
+
+        return self.start(bot, update)
+
+    def choice_remove_api(self, bot, update):
+        """
+        Asks for removing a Barrenero API already configured.
+        """
+        chat_id = update.message.chat_id
+        try:
+            chat = Chat.get(id=chat_id)
+        except peewee.DoesNotExist:
+            update.message.reply_text('There is not a Barrenero API configured yet')
+
+            result = self.start(bot, update)
+        else:
+            buttons = [str(i.id) for i in chat.apis]
+            keyboard = [buttons[i:i + 4] for i in range(0, len(buttons), 4)] if len(buttons) >= 4 else [buttons]
+            keyboard.append([StartOptions.DONE.value])
+            markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
+
+            response_text = f'*APIs configured*\n' + '\n'.join([f'*{a.id}*: `{a.url}`' for a in chat.apis])
+
+            update.message.reply_text(response_text, parse_mode=ParseMode.MARKDOWN, reply_markup=markup)
+
+            result = StartState.CHOICE_REMOVE_API
+
+        return result
+
+    def remove_api(self, bot, update):
+        text = update.message.text
+        chat_id = update.message.chat_id
+
+        try:
+            chat = Chat.get(id=chat_id)
+            API.get(id=text, chat=chat).delete_instance()
+        except:
+            self.logger.exception('Cannot remove Barrenero API')
+            update.message.reply_text('Cannot remove Barrenero API')
+
+        return StartState.CHOICE_REMOVE_API
+
+    def choice_current_config(self, bot, update):
+        """
+        Shows current config.
+        """
+        chat_id = update.message.chat_id
+
+        try:
+            chat = Chat.get(id=chat_id)
+        except peewee.DoesNotExist:
+            response_text = 'No configuration found'
+        else:
+            response_text = f'*Current config*\n' \
+                            f' - Last Transaction: `{chat.last_transaction}`\n\n'
+
+            for i, api in enumerate(chat.apis, 1):
+                response_text += f'*API #{i}*\n' \
+                                 f' - URL: `{api.url}`\n' \
+                                 f' - Token: `{api.token}`\n' \
+                                 f' - Superuser: `{"Yes" if api.superuser else "No"}`\n\n'
+
+        update.message.reply_text(response_text, parse_mode=ParseMode.MARKDOWN)
+
+        return StartState.CHOICE_ROOT
+
     def config_done(self, bot, update):
         """
         Finishes configuration process.
         """
-        chat_id = update.message.chat_id
+        update.message.reply_text("Configuration completed!")
 
-        config = self._get_token_or_register(chat_id)
-        if config:
-            Chat.create(id=chat_id, token=config['token'], superuser=config['superuser'], last_transaction=None)
-            update.message.reply_text("Configuration completed!")
-
-            return ConversationHandler.END
-        else:
-            self.logger.error('Cannot register user in Barrenero API')
-            return StartState.CHOOSING
+        return ConversationHandler.END
 
     def error(self, bot, update, error):
         """
@@ -286,12 +398,26 @@ Help us donating to support this project:
         self.dispatcher.add_handler(ConversationHandler(
             entry_points=[CommandHandler('start', self.start)],
             states={
-                StartState.CHOOSING: [
+                StartState.CHOICE_ROOT: [
+                    RegexHandler(f'^{StartOptions.ADD_API.value}$', self.choice_add_api),
+                    RegexHandler(f'^{StartOptions.REMOVE_API.value}$', self.choice_remove_api),
+                    RegexHandler(f'^{StartOptions.CURRENT_CONFIG.value}$', self.choice_current_config),
+                ],
+                StartState.CHOICE_ADD_API: [
+                    RegexHandler(f'^{StartOptions.URL.value}$', self.choice_url),
                     RegexHandler(f'^{StartOptions.USERNAME.value}$', self.choice_username),
                     RegexHandler(f'^{StartOptions.PASSWORD.value}$', self.choice_password),
                     RegexHandler(f'^{StartOptions.WALLET.value}$', self.choice_wallet),
                     RegexHandler(f'^{StartOptions.SUPERUSER.value}$', self.choice_superuser),
-                    RegexHandler(f'^{StartOptions.CURRENT_CONFIG.value}$', self.choice_current_config),
+                    RegexHandler(f'^{StartOptions.CURRENT_CONFIG.value}$', self.choice_current_changes),
+                    RegexHandler(f'^{StartOptions.DONE.value}$', self.add_api),
+                ],
+                StartState.CHOICE_REMOVE_API: [
+                    RegexHandler(f'^{StartOptions.DONE.value}$', self.start),
+                    MessageHandler(Filters.text, self.remove_api),
+                ],
+                StartState.CHOICE_URL: [
+                    MessageHandler(Filters.text, self.config_url)
                 ],
                 StartState.CHOICE_USERNAME: [
                     MessageHandler(Filters.text, self.config_username)
@@ -306,23 +432,23 @@ Help us donating to support this project:
                     MessageHandler(Filters.text, self.config_superuser)
                 ]
             },
-            fallbacks=[RegexHandler(f'^{StartOptions.DONE.value}$', self.config_done)]
+            fallbacks=[RegexHandler(f'^{StartOptions.FINISH.value}$', self.config_done)]
         ))
 
         # Miner command
-        self.add_miner_command()
+        # self.add_miner_command()
 
         # Ether command
-        self.add_ether_command()
-        self.add_ether_jobs()
+        # self.add_ether_command()
+        # self.add_ether_jobs()
 
         # Storj command
-        self.add_storj_command()
-        self.add_storj_jobs()
+        # self.add_storj_command()
+        # self.add_storj_jobs()
 
         # Wallet command
-        self.add_wallet_command()
-        self.add_wallet_jobs()
+        # self.add_wallet_command()
+        # self.add_wallet_jobs()
 
         # Error handler
         self.dispatcher.add_error_handler(self.error)

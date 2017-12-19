@@ -91,7 +91,7 @@ def _volumes(code=False):
     ]
 
     if code:
-        volumes.append('-v {}:/srv/apps/barrenero-telegram'.format(os.getcwd()))
+        volumes.append('{}:/srv/apps/barrenero-telegram'.format(os.getcwd()))
 
     return volumes
 

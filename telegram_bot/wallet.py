@@ -61,8 +61,6 @@ class WalletMixin:
                     for tx in takewhile(lambda x: x['hash'] != chat.last_transaction, data['transactions']):
                         text = f'\n\n*Transaction completed*\n' \
                                f' - Token: `{tx["token"]["name"]}`\n' \
-                               f' - Hash: `{tx["hash"]}`\n' \
-                               f' - Source: `{tx["source"]}`\n' \
                                f' - Value: `{tx["value"]} {tx["token"]["symbol"]}`\n' \
                                f' - Date: `{humanize_iso_date(tx["timestamp"])}`'
                         bot.send_message(text=text, parse_mode=ParseMode.MARKDOWN, chat_id=chat.id)
