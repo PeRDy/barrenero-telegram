@@ -71,7 +71,7 @@ Help us donating to support this project:
         self.add_start_command()
 
         # Miner command
-        # self.add_miner_command()
+        self.add_miner_command()
 
         # Ether command
         # self.add_ether_command()

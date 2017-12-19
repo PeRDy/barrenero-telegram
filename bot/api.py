@@ -66,6 +66,10 @@ class Barrenero:
         return config
 
     @staticmethod
+    def miner(url: str, token: str) -> Dict[str, Any]:
+        return Barrenero._get(base_url=url, path='/api/v1/status/', token=token)
+
+    @staticmethod
     def storj(url: str, token: str) -> Dict[str, Any]:
         return Barrenero._get(base_url=url, path='/api/v1/storj/', token=token)
 
