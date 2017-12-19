@@ -79,8 +79,8 @@ class WalletMixin:
 
     def _wallet_query(self, chat: 'Chat'):
         try:
-            url = f'{self._api}/api/v1/wallet'
-            headers = {'Authorization': f'Token {chat.token}'}
+            url = f'{chat.apis[0].url}/api/v1/wallet'
+            headers = {'Authorization': f'Token {chat.apis[0].token}'}
             response = requests.get(url=url, headers=headers)
             response.raise_for_status()
             payload = response.json()

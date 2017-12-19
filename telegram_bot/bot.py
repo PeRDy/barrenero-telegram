@@ -447,8 +447,8 @@ Help us donating to support this project:
         # self.add_storj_jobs()
 
         # Wallet command
-        # self.add_wallet_command()
-        # self.add_wallet_jobs()
+        self.add_wallet_command()
+        self.add_wallet_jobs()
 
         # Error handler
         self.dispatcher.add_error_handler(self.error)
