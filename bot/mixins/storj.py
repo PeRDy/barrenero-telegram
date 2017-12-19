@@ -3,6 +3,7 @@ from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup, Par
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from bot.api import Barrenero
+from bot.exceptions import BarreneroRequestException
 from bot.models import API, Chat
 from bot.state_machine import StatusStateMachine
 
@@ -70,12 +71,14 @@ class StorjMixin:
         except peewee.DoesNotExist:
             self.logger.error('Chat unregistered')
             response_text = 'Configure me first'
-            bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
-                                  message_id=query.message.message_id)
+        except BarreneroRequestException as e:
+            self.logger.exception(e.message)
+            response_text = e.message
         else:
             response_text = f'Restarting service `{api.name}`.'
-            bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
-                                  message_id=query.message.message_id)
+
+        bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
+                              message_id=query.message.message_id)
 
     def storj_status(self, bot, update):
         """
@@ -88,22 +91,25 @@ class StorjMixin:
 
         try:
             chat = Chat.get(id=chat_id)
-            data = {api.name: Barrenero.storj(api.url, api.token) for api in chat.apis}
         except peewee.DoesNotExist:
             self.logger.error('Chat unregistered')
             response_text = 'Configure me first'
         else:
-            response_text = ''
-            for api, result in data.items():
-                if result:
-                    node_texts = []
-                    for node in result:
+            all_messages = []
+            for api in chat.apis:
+                try:
+                    data = Barrenero.storj(api.url, api.token)
+                except BarreneroRequestException as e:
+                    self.logger.exception(e.message)
+                    all_messages.append(f'*API {api}*\nCannot retrieve Storj miner status')
+                else:
+                    for node in data:
                         shared = node['shared'] if node['shared'] is not None else 'Unknown'
                         shared_percent = f'{node["shared_percent"]}%' if node[
                                                                              'shared_percent'] is not None else 'Unknown'
                         data_received = node['data_received'] if node['data_received'] is not None else 'Unknown'
                         delta = f'{node["delta"]:d} ms' if node['delta'] is not None else 'Unknown'
-                        node_texts.append(
+                        all_messages.append(
                             f'*API {api} - Storj node #{node["id"]}*\n'
                             f' - Status: `{node["status"]}`\n'
                             f' - Uptime: `{node["uptime"]} ({node["restarts"]} restarts)`\n'
@@ -112,12 +118,10 @@ class StorjMixin:
                             f' - Peers/Allocs: `{node["peers"]:d}` / `{node["allocs"]:d}`\n'
                             f' - Delta: `{delta}`\n'
                             f' - Path: `{node["config_path"]}`')
-                    response_text = '\n\n'.join(node_texts)
-                else:
-                    response_text = f'*API {api}*\nCannot retrieve Storj miner status'
-        finally:
-            bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
-                                  message_id=query.message.message_id)
+            response_text = '\n\n'.join(all_messages)
+
+        bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
+                              message_id=query.message.message_id)
 
     def storj_job_status(self, bot, job):
         """
@@ -146,4 +150,4 @@ class StorjMixin:
         self.dispatcher.add_handler(CallbackQueryHandler(self.storj_status, pattern=r'\[storj_status\]'))
 
     def add_storj_jobs(self):
-        self.updater.job_queue.run_repeating(self.storj_job_status, 300.0)
+        self.updater.job_queue.run_repeating(self.storj_job_status, 60.0)

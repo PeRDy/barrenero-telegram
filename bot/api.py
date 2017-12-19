@@ -80,3 +80,11 @@ class Barrenero:
     @staticmethod
     def restart(url: str, token: str, service: str) -> Dict[str, Any]:
         return Barrenero._post(base_url=url, path='/api/v1/restart/', token=token, data={'name': service})
+
+    @staticmethod
+    def ether_status(url: str, token: str) -> Dict[str, Any]:
+        return Barrenero._get(base_url=url, path='/api/v1/ether/status/', token=token)
+
+    @staticmethod
+    def ether_nanopool(url: str, token: str) -> Dict[str, Any]:
+        return Barrenero._get(base_url=url, path='/api/v1/ether/nanopool/', token=token)

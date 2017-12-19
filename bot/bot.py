@@ -74,8 +74,8 @@ Help us donating to support this project:
         self.add_miner_command()
 
         # Ether command
-        # self.add_ether_command()
-        # self.add_ether_jobs()
+        self.add_ether_command()
+        self.add_ether_jobs()
 
         # Storj command
         self.add_storj_command()
