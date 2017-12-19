@@ -3,7 +3,7 @@ import requests
 from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
 
-from telegram_bot.persistence import Chat
+from telegram_bot.persistence import Chat, API
 from telegram_bot.state_machine import StatusStateMachine
 
 
@@ -70,30 +70,32 @@ class StorjMixin:
         try:
             chat = Chat.get(id=chat_id)
 
-            data = self._storj_status_query(chat)
+            data = self._storj_all_status_query(chat)
         except peewee.DoesNotExist:
             self.logger.error('Chat unregistered')
             response_text = 'Configure me first'
         else:
-            if data:
-                node_texts = []
-                for node in data:
-                    shared = node['shared'] if node['shared'] is not None else 'Unknown'
-                    shared_percent = f'{node["shared_percent"]}%' if node['shared_percent'] is not None else 'Unknown'
-                    data_received = node['data_received'] if node['data_received'] is not None else 'Unknown'
-                    delta = f'{node["delta"]:d} ms' if node['delta'] is not None else 'Unknown'
-                    node_texts.append(
-                        f'*Storj node #{node["id"]}*\n'
-                        f' - Status: `{node["status"]}`\n'
-                        f' - Uptime: `{node["uptime"]} ({node["restarts"]} restarts)`\n'
-                        f' - Shared: `{shared} ({shared_percent})`\n'
-                        f' - Data received: `{data_received}`\n'
-                        f' - Peers/Allocs: `{node["peers"]:d}` / `{node["allocs"]:d}`\n'
-                        f' - Delta: `{delta}`\n'
-                        f' - Path: `{node["config_path"]}`')
-                response_text = '\n\n'.join(node_texts)
-            else:
-                response_text = 'Cannot retrieve Storj miner status'
+            response_text = ''
+            for api, result in data.items():
+                if result:
+                    node_texts = []
+                    for node in result:
+                        shared = node['shared'] if node['shared'] is not None else 'Unknown'
+                        shared_percent = f'{node["shared_percent"]}%' if node['shared_percent'] is not None else 'Unknown'
+                        data_received = node['data_received'] if node['data_received'] is not None else 'Unknown'
+                        delta = f'{node["delta"]:d} ms' if node['delta'] is not None else 'Unknown'
+                        node_texts.append(
+                            f'*API {api} - Storj node #{node["id"]}*\n'
+                            f' - Status: `{node["status"]}`\n'
+                            f' - Uptime: `{node["uptime"]} ({node["restarts"]} restarts)`\n'
+                            f' - Shared: `{shared} ({shared_percent})`\n'
+                            f' - Data received: `{data_received}`\n'
+                            f' - Peers/Allocs: `{node["peers"]:d}` / `{node["allocs"]:d}`\n'
+                            f' - Delta: `{delta}`\n'
+                            f' - Path: `{node["config_path"]}`')
+                    response_text = '\n\n'.join(node_texts)
+                else:
+                    response_text = f'*API {api}*\nCannot retrieve Storj miner status'
         finally:
             bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
                                   message_id=query.message.message_id)
@@ -103,18 +105,19 @@ class StorjMixin:
         Check miner status
         """
         # Create new state machines
-        new_machines = {c: StatusStateMachine('Storj')
-                        for c in Chat.select().where(Chat.superuser == True) if c not in self.storj_status_machine}
+        new_machines = {a: StatusStateMachine('Storj', a.name)
+                        for a in API.select().where(API.superuser == True).join(Chat)
+                        if a not in self.storj_status_machine}
         self.storj_status_machine.update(new_machines)
 
-        for chat, status in self.storj_status_machine.items():
-            data = self._storj_status_query(chat)
+        for api, status in self.storj_status_machine.items():
+            data = self._storj_status_query(api)
 
             node_status = {d['status'] for d in data}
             if node_status == {'running'}:
-                status.start(bot=bot, chat=chat.id)
+                status.start(bot=bot, chat=api.chat.id)
             else:
-                status.stop(bot=bot, chat=chat.id)
+                status.stop(bot=bot, chat=api.chat.id)
 
     def add_storj_command(self):
         self.dispatcher.add_handler(CommandHandler('storj', self.storj))
@@ -125,28 +128,35 @@ class StorjMixin:
         self.updater.job_queue.run_repeating(self.storj_job_status, 300.0)
 
     def _storj_restart_query(self, chat: 'Chat'):
-        try:
-            url = f'{self._api}/api/v1/restart'
-            headers = {'Authorization': f'Token {chat.token}'}
-            data = {'name': 'Storj'}
-            response = requests.post(url=url, headers=headers, data=data)
-            response.raise_for_status()
-            payload = response.json()
-        except requests.HTTPError:
-            self.logger.error(f'Cannot restart Storj service')
-            payload = None
+        payload = {}
+        for api in chat.apis:
+            try:
+                url = f'{api.url}/api/v1/restart/'
+                headers = {'Authorization': f'Token {api.token}'}
+                data = {'name': 'Storj'}
+                response = requests.post(url=url, headers=headers, data=data)
+                response.raise_for_status()
+                payload[api.name] = response.json()
+            except requests.HTTPError:
+                self.logger.error(f'Cannot restart Storj service in API "%s"', api.name)
+                payload[api.name] = None
 
         return payload
 
-    def _storj_status_query(self, chat: 'Chat'):
+    def _storj_status_query(self, api: 'API'):
         try:
-            url = f'{self._api}/api/v1/storj'
-            headers = {'Authorization': f'Token {chat.token}'}
+            url = f'{api.url}/api/v1/storj/'
+            headers = {'Authorization': f'Token {api.token}'}
             response = requests.get(url=url, headers=headers)
             response.raise_for_status()
             payload = response.json()
         except requests.HTTPError:
-            self.logger.error(f'Cannot retrieve Storj status')
+            self.logger.error(f'Cannot retrieve Storj status from API "%s"', api.name)
             payload = None
+
+        return payload
+
+    def _storj_all_status_query(self, chat: 'Chat'):
+        payload = {api.name: self._storj_status_query(api) for api in chat.apis}
 
         return payload

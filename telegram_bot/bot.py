@@ -476,8 +476,8 @@ Help us donating to support this project:
         # self.add_ether_jobs()
 
         # Storj command
-        # self.add_storj_command()
-        # self.add_storj_jobs()
+        self.add_storj_command()
+        self.add_storj_jobs()
 
         # Wallet command
         self.add_wallet_command()

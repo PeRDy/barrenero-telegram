@@ -21,16 +21,18 @@ class StatusStateMachine(Machine):
         {'trigger': 'stop', 'source': StatusState.ACTIVE.name, 'dest': StatusState.INACTIVE.name, 'after': 'notify_stop'},
     ]
 
-    def __init__(self, service):
+    def __init__(self, service, api):
         super().__init__(self, states=self.states, initial=self.initial, transitions=self.transitions)
         self.service = service
+        self.api = api
 
     def notify_start(self, bot, chat):
-        bot.send_message(chat_id=chat, text=f'Service `{self.service}` is active and running now',
+        bot.send_message(chat_id=chat, text=f'Service `{self.service}` from API `{self.api}` is active and running now',
                          parse_mode=ParseMode.MARKDOWN)
 
     def notify_stop(self, bot, chat):
-        bot.send_message(chat_id=chat, text=f'Service `{self.service}` stops working and is now inactive',
+        bot.send_message(chat_id=chat, text=f'Service `{self.service}` from API `{self.api}` stops working and is now '
+                                            f'inactive',
                          parse_mode=ParseMode.MARKDOWN)
 
     def __str__(self):
