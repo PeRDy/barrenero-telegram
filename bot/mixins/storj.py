@@ -110,7 +110,7 @@ class StorjMixin:
                         data_received = node['data_received'] if node['data_received'] is not None else 'Unknown'
                         delta = f'{node["delta"]:d} ms' if node['delta'] is not None else 'Unknown'
                         all_messages.append(
-                            f'*API {api} - Storj node #{node["id"]}*\n'
+                            f'*API {api.name} - Storj node #{node["id"]}*\n'
                             f' - Status: `{node["status"]}`\n'
                             f' - Uptime: `{node["uptime"]} ({node["restarts"]} restarts)`\n'
                             f' - Shared: `{shared} ({shared_percent})`\n'
