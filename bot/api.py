@@ -3,10 +3,38 @@ from typing import Any, Dict
 
 import requests
 
+from bot.exceptions import BarreneroRequestException
+
 logger = logging.getLogger(__name__)
 
 
 class Barrenero:
+    @staticmethod
+    def _get(base_url: str, path: str, token: str) -> Dict[str, Any]:
+        try:
+            url = base_url + path
+            headers = {'Authorization': f'Token {token}'}
+
+            response = requests.get(url=url, headers=headers)
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            raise BarreneroRequestException('Cannot request Barrenero API') from e
+
+        return response.json()
+
+    @staticmethod
+    def _post(base_url: str, path: str, token: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        try:
+            url = base_url + path
+            headers = {'Authorization': f'Token {token}'}
+
+            response = requests.post(url=url, headers=headers, data=data)
+            response.raise_for_status()
+        except requests.HTTPError as e:
+            raise BarreneroRequestException('Cannot request Barrenero API') from e
+
+        return response.json()
+
     @staticmethod
     def get_token_or_register(url: str, username: str, password: str, account: str=None, api_password: str=None) \
             -> Dict[str, Any]:
@@ -28,7 +56,6 @@ class Barrenero:
                 response_register.raise_for_status()
                 payload = response_register.json()
         except requests.HTTPError:
-            logger.exception('Cannot retrieve Barrenero API token')
             raise
         else:
             config = {
@@ -37,3 +64,15 @@ class Barrenero:
             }
 
         return config
+
+    @staticmethod
+    def storj(url: str, token: str) -> Dict[str, Any]:
+        return Barrenero._get(base_url=url, path='/api/v1/storj/', token=token)
+
+    @staticmethod
+    def wallet(url: str, token: str) -> Dict[str, Any]:
+        return Barrenero._get(base_url=url, path='/api/v1/wallet/', token=token)
+
+    @staticmethod
+    def restart(url: str, token: str, service: str) -> Dict[str, Any]:
+        return Barrenero._post(base_url=url, path='/api/v1/restart/', token=token, data={'name': service})

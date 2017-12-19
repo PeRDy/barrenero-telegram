@@ -15,6 +15,10 @@ class EtherscanRequestException(RequestException):
     pass
 
 
+class BarreneroRequestException(RequestException):
+    pass
+
+
 class ImproperlyConfigured(TelegramError):
     pass
 

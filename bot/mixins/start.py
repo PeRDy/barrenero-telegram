@@ -278,7 +278,7 @@ class StartMixin:
             result = self.start(bot, update)
         else:
             buttons = [str(i.id) for i in chat.apis]
-            keyboard = [buttons[i:i + 4] for i in range(0, len(buttons), 4)] if len(buttons) >= 4 else [buttons]
+            keyboard = [buttons[i:min(len(buttons), i + 4)] for i in range(0, len(buttons), 4)]
             keyboard.append([StartOptions.DONE.value])
             markup = ReplyKeyboardMarkup(keyboard, one_time_keyboard=True)
 

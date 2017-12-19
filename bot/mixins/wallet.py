@@ -7,6 +7,7 @@ from telegram import ChatAction
 from telegram.ext import CommandHandler
 from telegram.parsemode import ParseMode
 
+from bot.api import Barrenero
 from bot.models import Chat
 from bot.utils import humanize_iso_date
 
@@ -21,7 +22,7 @@ class WalletMixin:
 
         try:
             chat = Chat.get(id=chat_id)
-            data = self._wallet_query(chat)
+            data = Barrenero.wallet(chat.apis[0].url, chat.apis[0].token)
         except peewee.DoesNotExist:
             self.logger.error(f'Chat unregistered')
             response_text = 'Configure me first'
@@ -50,7 +51,7 @@ class WalletMixin:
         """
         # Create new state machines
         for chat in Chat.select():
-            data = self._wallet_query(chat)
+            data = Barrenero.wallet(chat.apis[0].url, chat.apis[0].token)
             try:
                 first_transaction_hash = data['transactions'][0]['hash']
                 if not chat.last_transaction:
@@ -76,16 +77,3 @@ class WalletMixin:
 
     def add_wallet_jobs(self):
         self.updater.job_queue.run_repeating(self.wallet_job_transactions, 900.0)
-
-    def _wallet_query(self, chat: 'Chat'):
-        try:
-            url = f'{chat.apis[0].url}/api/v1/wallet'
-            headers = {'Authorization': f'Token {chat.apis[0].token}'}
-            response = requests.get(url=url, headers=headers)
-            response.raise_for_status()
-            payload = response.json()
-        except requests.HTTPError:
-            self.logger.error('Cannot retrieve wallet info')
-            payload = None
-
-        return payload
