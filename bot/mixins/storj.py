@@ -21,6 +21,8 @@ class StorjMixin:
         keyboard = [
             [
                 InlineKeyboardButton("Status", callback_data='[storj_status]'),
+            ],
+            [
                 InlineKeyboardButton("Restart", callback_data='[storj_restart]'),
             ],
         ]
@@ -28,11 +30,12 @@ class StorjMixin:
         reply_markup = InlineKeyboardMarkup(keyboard)
         bot.send_message(chat_id, 'Select an option:', reply_markup=reply_markup)
 
-    def storj_restart_choice(self, bot, update):
+    def storj_miner_choice(self, bot, update, groups):
         """
-        Call for Storj miner status and restarting service.
+        Select a miner to do following action.
         """
         query = update.callback_query
+        action = groups[0]
         chat_id = query.message.chat_id
         bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
         try:
@@ -41,7 +44,7 @@ class StorjMixin:
             chat = False
 
         if chat:
-            buttons = [InlineKeyboardButton(api.name, callback_data=f'[storj_restart][{api.id}]')
+            buttons = [InlineKeyboardButton(api.name, callback_data=f'[storj_{action}][{api.id}]')
                        for api in chat.apis if api.superuser]
             keyboard = [buttons[i:max(len(buttons), i + 4)] for i in range(0, len(buttons), 4)]
             reply_markup = InlineKeyboardMarkup(keyboard)
@@ -80,45 +83,44 @@ class StorjMixin:
         bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
                               message_id=query.message.message_id)
 
-    def storj_status(self, bot, update):
+    def storj_status(self, bot, update, groups):
         """
-        Check Ether miner status.
+        Check Storj miner status.
         """
         query = update.callback_query
+        api_id = groups[0]
         chat_id = query.message.chat_id
 
         bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
 
         try:
-            chat = Chat.get(id=chat_id)
+            api = API.get(id=api_id)
         except peewee.DoesNotExist:
             self.logger.error('Chat unregistered')
             response_text = 'Configure me first'
         else:
-            all_messages = []
-            for api in chat.apis:
-                try:
-                    data = Barrenero.storj(api.url, api.token)
-                except BarreneroRequestException as e:
-                    self.logger.exception(e.message)
-                    all_messages.append(f'*API {api}*\nCannot retrieve Storj miner status')
-                else:
-                    for node in data:
-                        shared = node['shared'] if node['shared'] is not None else 'Unknown'
-                        shared_percent = f'{node["shared_percent"]}%' if node[
-                                                                             'shared_percent'] is not None else 'Unknown'
-                        data_received = node['data_received'] if node['data_received'] is not None else 'Unknown'
-                        delta = f'{node["delta"]:d} ms' if node['delta'] is not None else 'Unknown'
-                        all_messages.append(
-                            f'*API {api.name} - Storj node #{node["id"]}*\n'
-                            f' - Status: `{node["status"]}`\n'
-                            f' - Uptime: `{node["uptime"]} ({node["restarts"]} restarts)`\n'
-                            f' - Shared: `{shared} ({shared_percent})`\n'
-                            f' - Data received: `{data_received}`\n'
-                            f' - Peers/Allocs: `{node["peers"]:d}` / `{node["allocs"]:d}`\n'
-                            f' - Delta: `{delta}`\n'
-                            f' - Path: `{node["config_path"]}`')
-            response_text = '\n\n'.join(all_messages)
+            try:
+                data = Barrenero.storj(api.url, api.token)
+            except BarreneroRequestException as e:
+                self.logger.exception(e.message)
+                response_text = f'*API {api}*\nCannot retrieve Storj miner status'
+            else:
+                nodes_status = []
+                for node in data:
+                    shared = node['shared'] if node['shared'] is not None else 'Unknown'
+                    shared_percent = f'{node["shared_percent"]}%' if node['shared_percent'] is not None else 'Unknown'
+                    data_received = node['data_received'] if node['data_received'] is not None else 'Unknown'
+                    delta = f'{node["delta"]:d} ms' if node['delta'] is not None else 'Unknown'
+                    nodes_status.append(
+                        f'*Storj node #{node["id"]}*\n'
+                        f' - Status: `{node["status"]}`\n'
+                        f' - Uptime: `{node["uptime"]} ({node["restarts"]} restarts)`\n'
+                        f' - Shared: `{shared} ({shared_percent})`\n'
+                        f' - Data received: `{data_received}`\n'
+                        f' - Peers/Allocs: `{node["peers"]:d}` / `{node["allocs"]:d}`\n'
+                        f' - Delta: `{delta}`\n'
+                        f' - Path: `{node["config_path"]}`')
+                response_text = '\n\n'.join(nodes_status)
 
         bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
                               message_id=query.message.message_id)
@@ -146,8 +148,10 @@ class StorjMixin:
         self.dispatcher.add_handler(CommandHandler('storj', self.storj))
         self.dispatcher.add_handler(CallbackQueryHandler(self.storj_restart, pass_groups=True,
                                                          pattern=r'\[storj_restart\]\[(\d+)\]'))
-        self.dispatcher.add_handler(CallbackQueryHandler(self.storj_restart_choice, pattern=r'\[storj_restart\]'))
-        self.dispatcher.add_handler(CallbackQueryHandler(self.storj_status, pattern=r'\[storj_status\]'))
+        self.dispatcher.add_handler(CallbackQueryHandler(self.storj_status, pass_groups=True,
+                                                         pattern=r'\[storj_status\]\[(\d+)\]'))
+        self.dispatcher.add_handler(CallbackQueryHandler(self.storj_miner_choice, pass_groups=True,
+                                                         pattern=r'\[storj_(status|restart)\]$'))
 
     def add_storj_jobs(self):
         self.updater.job_queue.run_repeating(self.storj_job_status, 60.0)

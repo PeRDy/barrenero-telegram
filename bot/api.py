@@ -1,5 +1,5 @@
 import logging
-from typing import Any, Dict
+from typing import Any, Dict, List, Union
 
 import requests
 
@@ -10,7 +10,7 @@ logger = logging.getLogger(__name__)
 
 class Barrenero:
     @staticmethod
-    def _get(base_url: str, path: str, token: str) -> Dict[str, Any]:
+    def _get(base_url: str, path: str, token: str) -> Union[List[Any], Dict[str, Any]]:
         try:
             url = base_url + path
             headers = {'Authorization': f'Token {token}'}
@@ -70,7 +70,7 @@ class Barrenero:
         return Barrenero._get(base_url=url, path='/api/v1/status/', token=token)
 
     @staticmethod
-    def storj(url: str, token: str) -> Dict[str, Any]:
+    def storj(url: str, token: str) -> List[Dict[str, Any]]:
         return Barrenero._get(base_url=url, path='/api/v1/storj/', token=token)
 
     @staticmethod
@@ -82,9 +82,5 @@ class Barrenero:
         return Barrenero._post(base_url=url, path='/api/v1/restart/', token=token, data={'name': service})
 
     @staticmethod
-    def ether_status(url: str, token: str) -> Dict[str, Any]:
-        return Barrenero._get(base_url=url, path='/api/v1/ether/status/', token=token)
-
-    @staticmethod
-    def ether_nanopool(url: str, token: str) -> Dict[str, Any]:
-        return Barrenero._get(base_url=url, path='/api/v1/ether/nanopool/', token=token)
+    def ether(url: str, token: str) -> Dict[str, Any]:
+        return Barrenero._get(base_url=url, path='/api/v1/ether/', token=token)
