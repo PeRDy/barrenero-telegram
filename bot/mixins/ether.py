@@ -67,10 +67,11 @@ class EtherMixin:
                                 f' - 6 hours: `{data["nanopool"]["hashrate"]["six_hours"]} MH/s`\n' \
                                 f' - 12 hours: `{data["nanopool"]["hashrate"]["twelve_hours"]} MH/s`\n' \
                                 f' - 24 hours: `{data["nanopool"]["hashrate"]["twenty_four_hours"]} MH/s`\n\n' \
+                                f'*Last payment*\n' \
                                 f' - Date: `{humanize_iso_date(data["nanopool"]["last_payment"]["date"])}`\n' \
                                 f' - Value: `{data["nanopool"]["last_payment"]["value"]} ETH`\n\n' \
                                 f'*Workers*\n' + \
-                                '\n'.join(f' - {w}: `{v}` MH/s' for w, v in data['nanopool']['workers'].items())
+                                '\n'.join(f' - {w}: `{v} MH/s`' for w, v in data['nanopool']['workers'].items())
             except (KeyError, TypeError):
                 response_text = 'Cannot retrieve Nanopool info'
                 self.logger.exception('Barrenero API wrong response for Nanopool info: %s', str(data))
