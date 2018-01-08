@@ -111,6 +111,9 @@ class StorjMixin:
                     shared_percent = f'{node["shared_percent"]}%' if node['shared_percent'] is not None else 'Unknown'
                     data_received = node['data_received'] if node['data_received'] is not None else 'Unknown'
                     delta = f'{node["delta"]:d} ms' if node['delta'] is not None else 'Unknown'
+                    response_time = f'{node["response_time"]:.2f} ms' if node['response_time'] is not None else 'Unknown'
+                    reputation = f'{node["reputation"]:d}/5000' if node['reputation'] is not None else 'Unknown'
+                    version = node["version"] if node['version'] is not None else 'Unknown'
                     nodes_status.append(
                         f'*Storj node #{node["id"]}*\n'
                         f' - Status: `{node["status"]}`\n'
@@ -119,7 +122,10 @@ class StorjMixin:
                         f' - Data received: `{data_received}`\n'
                         f' - Peers/Allocs: `{node["peers"]:d}` / `{node["allocs"]:d}`\n'
                         f' - Delta: `{delta}`\n'
-                        f' - Path: `{node["config_path"]}`')
+                        f' - Path: `{node["config_path"]}`\n'
+                        f' - Response Time: `{response_time}`\n'
+                        f' - Reputation: `{reputation}`\n'
+                        f' - Version: `{version}`')
                 response_text = '\n\n'.join(nodes_status)
 
         bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
