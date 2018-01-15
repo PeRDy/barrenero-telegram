@@ -3,11 +3,30 @@ import logging
 import logging.config
 import sys
 import time
+from functools import wraps
 
 from clinner.command import Type, command
 from clinner.run import Main as ClinnerMain
 
 from bot.bot import TelegramBot
+
+DONATE_TEXT = '''
+This project is free and open sourced, you can use it, spread the word, contribute to the codebase and help us donating:
+* Ether: 0x566d41b925ed1d9f643748d652f4e66593cba9c9
+* Bitcoin: 1Jtj2m65DN2UsUzxXhr355x38T6pPGhqiA
+* PayPal: barrenerobot@gmail.com
+'''
+
+
+def donate(func):
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        result = func(*args, **kwargs)
+
+        print(DONATE_TEXT)
+
+        return result
+    return wrapper
 
 
 class UTCFormatter(logging.Formatter):
@@ -75,9 +94,10 @@ class Main(ClinnerMain):
 
 
 @command(command_type=Type.PYTHON,
-         args=((('-c', '--config-file'), {'help': 'Config file', 'default': 'setup.cfg'}),),
+         args=((('-c', '--config-file'), {'help': 'Config file', 'default': '/etc/barrenero/barrenero-telegram/setup.cfg'}),),
          parser_opts={'help': 'Telegram bot'})
-def run(*args, **kwargs):
+@donate
+def start(*args, **kwargs):
     TelegramBot(config=kwargs['config_file']).run()
 
 
