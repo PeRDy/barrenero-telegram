@@ -35,6 +35,10 @@ class StatusStateMachine(Machine):
                                             f'inactive',
                          parse_mode=ParseMode.MARKDOWN)
 
+    @property
+    def is_active(self):
+        return self.model.state == StatusState.ACTIVE
+
     def __str__(self):
         return self.model.state
 

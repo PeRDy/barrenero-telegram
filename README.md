@@ -22,5 +22,5 @@ This project is free and open sourced, you can use it, spread the word, contribu
 
 ## Quick start
 1. Register a new telegram bot following [these instructions](https://core.telegram.org/bots#creating-a-new-bot) and save the token to use it when installing.
-2. Run the service: `docker run -v /etc/barrenero/barrenero-telegram/:/etc/barrenero/barrenero-telegram/ perdy/barrenero-telegram:latest start`
+2. Run the service: `docker run -v /etc/barrenero/telegram/:/srv/apps/barrenero-telegram/config/ -v /var/log/barrenero/telegram:/srv/apps/barrenero-telegram/logs/ perdy/barrenero-telegram:latest start`
 3. Add the bot to your Telegram chat and configure it using `/start` command.

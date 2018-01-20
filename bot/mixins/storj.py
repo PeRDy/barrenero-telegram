@@ -151,8 +151,9 @@ class StorjMixin:
                 else:
                     status.stop(bot=bot, chat=api.chat.id)
             except BarreneroRequestException:
-                bot.send_message(api.chat.id, f'Cannot access `{api.name}`')
-                status.stop(bot=bot, chat=api.chat.id)
+                if status.is_active:
+                    bot.send_message(api.chat.id, f'Cannot access `{api.name}`', parse_mode=ParseMode.MARKDOWN)
+                    status.stop(bot=bot, chat=api.chat.id)
 
     def add_storj_command(self):
         self.dispatcher.add_handler(CommandHandler('storj', self.storj))
