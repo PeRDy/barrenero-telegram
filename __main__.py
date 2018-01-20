@@ -94,7 +94,7 @@ class Main(ClinnerMain):
 
 
 @command(command_type=Type.PYTHON,
-         args=((('-c', '--config-file'), {'help': 'Config file', 'default': 'config/setup.cfg'}),),
+         args=((('-c', '--config-file'), {'help': 'Config file', 'default': '/etc/barrenero/telegram/config/setup.cfg'}),),
          parser_opts={'help': 'Telegram bot'})
 @donate
 def start(*args, **kwargs):
