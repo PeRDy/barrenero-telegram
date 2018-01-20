@@ -142,12 +142,16 @@ class StorjMixin:
         self.storj_status_machine.update(new_machines)
 
         for api, status in self.storj_status_machine.items():
-            data = Barrenero.storj(api.url, api.token)
+            try:
+                data = Barrenero.storj(api.url, api.token)
 
-            node_status = {d['status'] for d in data}
-            if node_status == {'running'}:
-                status.start(bot=bot, chat=api.chat.id)
-            else:
+                node_status = {d['status'] for d in data}
+                if node_status == {'running'}:
+                    status.start(bot=bot, chat=api.chat.id)
+                else:
+                    status.stop(bot=bot, chat=api.chat.id)
+            except BarreneroRequestException:
+                bot.send_message(api.chat.id, f'Cannot access `{api.name}`')
                 status.stop(bot=bot, chat=api.chat.id)
 
     def add_storj_command(self):
