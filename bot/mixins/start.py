@@ -299,7 +299,7 @@ class StartMixin:
             api = API.get(id=text, chat=chat)
             name = api.name
             api.delete_instance()
-            update.message.reply_text(f'Barrenero API `{name}` removed successfully')
+            update.message.reply_text(f'Barrenero API `{name}` removed successfully', parse_mode=ParseMode.MARKDOWN)
         except:
             self.logger.exception('Cannot remove Barrenero API')
             update.message.reply_text('Cannot remove Barrenero API')
