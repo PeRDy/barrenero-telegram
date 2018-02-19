@@ -77,4 +77,4 @@ class WalletMixin:
         self.dispatcher.add_handler(CommandHandler('wallet', self.wallet))
 
     def add_wallet_jobs(self):
-        self.updater.job_queue.run_repeating(self.wallet_job_transactions, 900.0)
+        self.updater.job_queue.run_repeating(self.wallet_job_transactions, interval=900.0, first=40.0)

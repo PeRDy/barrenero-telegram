@@ -5,6 +5,7 @@ ENV APP=barrenero-telegram
 
 RUN apk --no-cache add \
         build-base \
+        sqlite-dev \
         linux-headers && \
     rm -rf /var/cache/apk/*
 

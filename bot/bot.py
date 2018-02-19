@@ -89,7 +89,7 @@ Help us donating to support this project:
         self.dispatcher.add_error_handler(self.error)
 
         try:
-            self.updater.start_polling()
+            self.updater.start_polling(timeout=30.0)
 
             self.updater.idle()
         except:
