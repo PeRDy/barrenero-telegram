@@ -6,7 +6,7 @@ logger = logging.getLogger(__name__)
 
 
 DEFAULT_DB_FILE = 'config/barrenero_telegram.db'
-db = peewee.SqliteDatabase(DEFAULT_DB_FILE, threadlocals=True, pragmas=(('foreign_keys', 'on'),))
+db = peewee.SqliteDatabase(DEFAULT_DB_FILE, pragmas=(('foreign_keys', 'on'),))
 
 
 class BaseModel(peewee.Model):
