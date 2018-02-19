@@ -1,8 +1,8 @@
 import logging
 from configparser import ConfigParser
 
-from telegram import ParseMode
-from telegram.ext import CommandHandler, Updater
+from telegram import Bot, ParseMode
+from telegram.ext import CommandHandler, Updater, messagequeue as mq
 
 from bot.mixins.ether import EtherMixin
 from bot.mixins.miner import MinerMixin
@@ -10,6 +10,27 @@ from bot.mixins.start import StartMixin
 from bot.mixins.storj import StorjMixin
 from bot.mixins.wallet import WalletMixin
 from bot.models import initialize_db
+
+
+class MQBot(Bot):
+    """A subclass of Bot which delegates send method handling to MQ"""
+
+    def __init__(self, *args, is_queued_def=True, burst_messages=5, burst_time=15000, **kwargs):
+        super(MQBot, self).__init__(*args, **kwargs)
+        # below 2 attributes should be provided for decorator usage
+        self._is_messages_queued_default = is_queued_def
+        self._msg_queue = mq.MessageQueue(all_burst_limit=burst_messages, all_time_limit_ms=burst_time)
+
+    def __del__(self):
+        try:
+            self._msg_queue.stop()
+        except:
+            pass
+        super(MQBot, self).__del__()
+
+    @mq.queuedmessage
+    def send_message(self, *args, **kwargs):
+        return super(MQBot, self).send_message(*args, **kwargs)
 
 
 class TelegramBot(StartMixin, MinerMixin, EtherMixin, StorjMixin, WalletMixin):
@@ -44,7 +65,7 @@ Help us donating to support this project:
 
         self.logger = logging.getLogger('telegram')
 
-        self.updater = Updater(token=self._telegram_token)
+        self.updater = Updater(bot=MQBot(self._telegram_token))
         self.dispatcher = self.updater.dispatcher
 
     def help(self, bot, update):
