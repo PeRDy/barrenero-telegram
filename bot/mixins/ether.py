@@ -1,3 +1,4 @@
+import random
 import threading
 
 import peewee
@@ -52,7 +53,8 @@ class EtherMixin:
 
         try:
             chat = Chat.get(id=chat_id)
-            data = Barrenero.ether(chat.apis[0].url, chat.apis[0].token)
+            api = random.choice(chat.apis)
+            data = Barrenero.ether(api.url, api.token)
         except peewee.DoesNotExist:
             self.logger.error('Chat unregistered')
             response_text = 'Configure me first'
@@ -129,7 +131,8 @@ class EtherMixin:
             bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
                                   message_id=query.message.message_id)
         else:
-            response_text = f'Restarting service `{api.name}`.'
+            response_text = f'*API {api.name}*\n' \
+                            f'Restarting Ether.'
             bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
                                   message_id=query.message.message_id)
 
@@ -155,7 +158,8 @@ class EtherMixin:
             try:
                 data = Barrenero.ether(api.url, api.token)
 
-                response_text = f'*Ether miner*\n' \
+                response_text = f'*API {api.name}*\n' \
+                                f'*Ether miner*\n' \
                                 f' - Status: {data["active"]}\n\n' \
                                 f'*Hashrate*\n' \
                                 + '\n'.join([f' - Graphic card #{h["graphic_card"]}: `{h["hashrate"]:.2f} MH/s`'
@@ -183,6 +187,7 @@ class EtherMixin:
                             if a not in status_machines}
             status_machines.update(new_machines)
 
+            self.logger.debug('Ether Status Machines: %s', str(status_machines))
             for api, status in status_machines.items():
                 try:
                     data = Barrenero.ether(api.url, api.token)

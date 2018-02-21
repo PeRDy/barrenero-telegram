@@ -4,7 +4,7 @@ from telegram.ext import CallbackQueryHandler, CommandHandler
 
 from bot.api import Barrenero
 from bot.exceptions import BarreneroRequestException
-from bot.models import Chat, API
+from bot.models import API, Chat
 
 
 class MinerMixin:
@@ -55,7 +55,7 @@ class MinerMixin:
             try:
                 data = Barrenero.miner(api.url, api.token)
 
-                status_message = f'*API {api.name}\n'
+                status_message = f'*API {api.name}*\n'
                 status_message += '*Services*\n'
                 status_message += '\n'.join([f' - {service["name"]}: `{service["status"]}`'
                                             for service in data['services']])

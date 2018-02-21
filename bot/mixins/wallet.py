@@ -1,8 +1,8 @@
+import random
 import time
 from itertools import takewhile
 
 import peewee
-import requests
 from telegram import ChatAction
 from telegram.ext import CommandHandler
 from telegram.parsemode import ParseMode
@@ -23,7 +23,8 @@ class WalletMixin:
 
         try:
             chat = Chat.get(id=chat_id)
-            data = Barrenero.wallet(chat.apis[0].url, chat.apis[0].token)
+            api = random.choice(chat.apis)
+            data = Barrenero.wallet(api.url, api.token)
         except peewee.DoesNotExist:
             self.logger.error('Chat unregistered')
             response_text = 'Configure me first'
@@ -52,8 +53,11 @@ class WalletMixin:
         """
         # Create new state machines
         for chat in Chat.select():
-            data = Barrenero.wallet(chat.apis[0].url, chat.apis[0].token)
+            api = random.choice(chat.apis)
+            data = Barrenero.wallet(api.url, api.token)
             try:
+                self.logger.debug('Current transaction: %s', str(chat.last_transaction))
+                self.logger.debug('Retrieved transactions: %s', str(data['transactions']))
                 first_transaction_hash = data['transactions'][0]['hash']
                 if not chat.last_transaction:
                     # If last transaction is unknown, simply update it

@@ -12,8 +12,6 @@ from bot.mixins.storj import StorjMixin
 from bot.mixins.wallet import WalletMixin
 from bot.models import initialize_db
 
-request = Request(con_pool_size=8)
-
 
 class MQBot(Bot):
     """A subclass of Bot which delegates send method handling to MQ"""
@@ -68,6 +66,7 @@ Help us donating to support this project:
 
         self.logger = logging.getLogger('telegram')
 
+        request = Request(con_pool_size=8)
         self.updater = Updater(bot=MQBot(self._telegram_token, request=request))
         self.dispatcher = self.updater.dispatcher
 

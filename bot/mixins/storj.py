@@ -81,7 +81,8 @@ class StorjMixin:
             self.logger.exception(e.message)
             response_text = e.message
         else:
-            response_text = f'Restarting service `{api.name}`.'
+            response_text = f'*API {api.name}*\n' \
+                            f'Restarting Storj.'
 
         bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
                               message_id=query.message.message_id)
@@ -129,7 +130,7 @@ class StorjMixin:
                         f' - Response Time: `{response_time}`\n'
                         f' - Reputation: `{reputation}`\n'
                         f' - Version: `{version}`')
-                response_text = '\n\n'.join(nodes_status)
+                response_text = f'*API {api.name}*\n' + '\n\n'.join(nodes_status)
 
         bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
                               message_id=query.message.message_id)
@@ -146,6 +147,8 @@ class StorjMixin:
                             for a in API.select().where(API.superuser == True).join(Chat)
                             if a not in status_machines}
             status_machines.update(new_machines)
+
+            self.logger.debug('Storj Status Machines: %s', str(status_machines))
 
             for api, status in status_machines.items():
                 try:

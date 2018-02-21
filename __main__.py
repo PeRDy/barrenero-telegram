@@ -76,14 +76,40 @@ class Main(ClinnerMain):
                 'level': 'DEBUG',
                 'maxBytes': 10 * (2 ** 20),
                 'backupCount': 5
+            },
+            'telegram_file': {
+                'class': 'logging.handlers.RotatingFileHandler',
+                'filename': 'logs/telegram.log',
+                'formatter': 'plain',
+                'level': 'DEBUG',
+                'maxBytes': 10 * (2 ** 20),
+                'backupCount': 5
+            },
+            'root_file': {
+                'class': 'logging.handlers.RotatingFileHandler',
+                'filename': 'logs/root.log',
+                'formatter': 'plain',
+                'level': 'DEBUG',
+                'maxBytes': 10 * (2 ** 20),
+                'backupCount': 5
             }
         },
         'loggers': {
             'telegram': {
+                'handlers': ['console', 'telegram_file'],
+                'level': 'INFO',
+                'propagate': False
+            },
+            'bot': {
                 'handlers': ['console', 'base_file'],
                 'level': 'INFO',
                 'propagate': False
             }
+        },
+        'root': {
+            'handlers': ['console', 'root_file'],
+            'level': 'INFO',
+            'propagate': False
         }
     }
 
