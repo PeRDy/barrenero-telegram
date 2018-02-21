@@ -27,10 +27,9 @@ class MinerMixin:
             bot.send_message(chat_id, response_text)
         else:
             if reply_markup:
-                bot.edit_message_text(text='Select miner:', reply_markup=reply_markup, chat_id=chat_id,
-                                      message_id=query.message.message_id)
+                bot.send_message(text='Select miner:', reply_markup=reply_markup, chat_id=chat_id)
             else:
-                bot.edit_message_text(text='No options available', chat_id=chat_id, message_id=query.message.message_id)
+                bot.send_message(text='No options available', chat_id=chat_id)
 
     def miner_status(self, bot, update, groups):
         """
