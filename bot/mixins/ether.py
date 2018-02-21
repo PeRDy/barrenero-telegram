@@ -1,3 +1,5 @@
+import threading
+
 import peewee
 from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
@@ -8,10 +10,11 @@ from bot.models import API, Chat
 from bot.state_machine import StatusStateMachine
 from bot.utils import humanize_iso_date
 
+status_machines = {}
+lock = threading.RLock()
+
 
 class EtherMixin:
-    ether_status_machine = {}
-
     def ether(self, bot, update):
         """
         Call for Ether miner status and restarting service.
@@ -172,23 +175,26 @@ class EtherMixin:
         Check miner status
         """
         # Create new state machines
-        new_machines = {a: StatusStateMachine('Ether', a.name)
-                        for a in API.select().where(API.superuser == True).join(Chat)
-                        if a not in self.ether_status_machine}
-        self.ether_status_machine.update(new_machines)
+        global status_machines
 
-        for api, status in self.ether_status_machine.items():
-            try:
-                data = Barrenero.ether(api.url, api.token)
+        with lock:
+            new_machines = {a: StatusStateMachine('Ether', a.name)
+                            for a in API.select().where(API.superuser == True).join(Chat)
+                            if a not in status_machines}
+            status_machines.update(new_machines)
 
-                if data['active']:
-                    status.start(bot=bot, chat=api.chat.id)
-                else:
-                    status.stop(bot=bot, chat=api.chat.id)
-            except BarreneroRequestException:
-                if status.is_active:
-                    bot.send_message(api.chat.id, f'Cannot access `{api.name}`', parse_mode=ParseMode.MARKDOWN)
-                    status.stop(bot=bot, chat=api.chat.id)
+            for api, status in status_machines.items():
+                try:
+                    data = Barrenero.ether(api.url, api.token)
+
+                    if data['active']:
+                        status.start(bot=bot, chat=api.chat.id)
+                    else:
+                        status.stop(bot=bot, chat=api.chat.id)
+                except BarreneroRequestException:
+                    if status.is_active:
+                        bot.send_message(api.chat.id, f'Cannot access `{api.name}`', parse_mode=ParseMode.MARKDOWN)
+                        status.stop(bot=bot, chat=api.chat.id)
 
     def add_ether_command(self):
         self.dispatcher.add_handler(CommandHandler('ether', self.ether))

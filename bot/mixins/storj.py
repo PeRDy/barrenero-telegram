@@ -1,3 +1,5 @@
+import threading
+
 import peewee
 from telegram import ChatAction, InlineKeyboardButton, InlineKeyboardMarkup, ParseMode
 from telegram.ext import CallbackQueryHandler, CommandHandler
@@ -7,10 +9,11 @@ from bot.exceptions import BarreneroRequestException
 from bot.models import API, Chat
 from bot.state_machine import StatusStateMachine
 
+status_machines = {}
+lock = threading.RLock()
+
 
 class StorjMixin:
-    storj_status_machine = {}
-
     def storj(self, bot, update):
         """
         Call for Storj miner status and restarting service.
@@ -136,24 +139,27 @@ class StorjMixin:
         Check miner status
         """
         # Create new state machines
-        new_machines = {a: StatusStateMachine('Storj', a.name)
-                        for a in API.select().where(API.superuser == True).join(Chat)
-                        if a not in self.storj_status_machine}
-        self.storj_status_machine.update(new_machines)
+        global status_machines
 
-        for api, status in self.storj_status_machine.items():
-            try:
-                data = Barrenero.storj(api.url, api.token)
+        with lock:
+            new_machines = {a: StatusStateMachine('Storj', a.name)
+                            for a in API.select().where(API.superuser == True).join(Chat)
+                            if a not in status_machines}
+            status_machines.update(new_machines)
 
-                node_status = {d['status'] for d in data}
-                if node_status == {'running'}:
-                    status.start(bot=bot, chat=api.chat.id)
-                else:
-                    status.stop(bot=bot, chat=api.chat.id)
-            except BarreneroRequestException:
-                if status.is_active:
-                    bot.send_message(api.chat.id, f'Cannot access `{api.name}`', parse_mode=ParseMode.MARKDOWN)
-                    status.stop(bot=bot, chat=api.chat.id)
+            for api, status in status_machines.items():
+                try:
+                    data = Barrenero.storj(api.url, api.token)
+
+                    node_status = {d['status'] for d in data}
+                    if node_status == {'running'}:
+                        status.start(bot=bot, chat=api.chat.id)
+                    else:
+                        status.stop(bot=bot, chat=api.chat.id)
+                except BarreneroRequestException:
+                    if status.is_active:
+                        bot.send_message(api.chat.id, f'Cannot access `{api.name}`', parse_mode=ParseMode.MARKDOWN)
+                        status.stop(bot=bot, chat=api.chat.id)
 
     def add_storj_command(self):
         self.dispatcher.add_handler(CommandHandler('storj', self.storj))
