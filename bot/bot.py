@@ -66,7 +66,7 @@ Help us donating to support this project:
 
         self.logger = logging.getLogger('telegram')
 
-        request = Request(con_pool_size=8)
+        request = Request(con_pool_size=8, connect_timeout=20., read_timeout=20.)
         self.updater = Updater(bot=MQBot(self._telegram_token, request=request))
         self.dispatcher = self.updater.dispatcher
 
