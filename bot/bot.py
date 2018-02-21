@@ -64,7 +64,7 @@ Help us donating to support this project:
         # Initialize DB
         initialize_db()
 
-        self.logger = logging.getLogger('telegram')
+        self.logger = logging.getLogger('bot')
 
         request = Request(con_pool_size=8, connect_timeout=20., read_timeout=20.)
         self.updater = Updater(bot=MQBot(self._telegram_token, request=request))
