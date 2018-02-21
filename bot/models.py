@@ -23,7 +23,7 @@ class Chat(BaseModel):
         return self.id
 
     def __repr__(self):
-        attrs = [self.id]
+        attrs = [str(self.id)]
         if self.last_transaction:
             attrs.append(f'last_transaction={self.last_transaction}')
 
