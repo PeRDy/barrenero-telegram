@@ -102,7 +102,7 @@ class Main(ClinnerMain):
             },
             'bot': {
                 'handlers': ['console', 'base_file'],
-                'level': 'INFO',
+                'level': 'DEBUG',
                 'propagate': False
             }
         },

@@ -12,8 +12,7 @@ class MinerMixin:
         """
         Asks for a miner.
         """
-        query = update.callback_query
-        chat_id = query.message.chat_id
+        chat_id = update.message.chat.id
         bot.send_chat_action(chat_id=chat_id, action=ChatAction.TYPING)
         try:
             chat = Chat.get(id=chat_id)

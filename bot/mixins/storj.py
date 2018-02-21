@@ -174,4 +174,4 @@ class StorjMixin:
                                                          pattern=r'\[storj_(status|restart)\]$'))
 
     def add_storj_jobs(self):
-        self.updater.job_queue.run_repeating(self.storj_job_status, interval=60.0, first=20.0)
+        self.updater.job_queue.run_repeating(self.storj_job_status, interval=300.0)

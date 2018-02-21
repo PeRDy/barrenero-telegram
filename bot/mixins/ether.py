@@ -212,4 +212,4 @@ class EtherMixin:
         self.dispatcher.add_handler(CallbackQueryHandler(self.ether_nanopool, pattern=r'\[ether_nanopool\]'))
 
     def add_ether_jobs(self):
-        self.updater.job_queue.run_repeating(self.ether_job_status, interval=60.0)
+        self.updater.job_queue.run_repeating(self.ether_job_status, interval=180.0)
