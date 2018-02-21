@@ -45,7 +45,7 @@ class API(BaseModel):
         return self.id
 
     def __repr__(self):
-        attrs = [self.id, f'token={self.token}']
+        attrs = [str(self.id), f'token={self.token}']
 
         if self.superuser:
             attrs.append('superuser')
