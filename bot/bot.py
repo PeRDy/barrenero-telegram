@@ -3,6 +3,7 @@ from configparser import ConfigParser
 
 from telegram import Bot, ParseMode
 from telegram.ext import CommandHandler, Updater, messagequeue as mq
+from telegram.utils.request import Request
 
 from bot.mixins.ether import EtherMixin
 from bot.mixins.miner import MinerMixin
@@ -10,6 +11,8 @@ from bot.mixins.start import StartMixin
 from bot.mixins.storj import StorjMixin
 from bot.mixins.wallet import WalletMixin
 from bot.models import initialize_db
+
+request = Request(con_pool_size=8)
 
 
 class MQBot(Bot):
@@ -65,7 +68,7 @@ Help us donating to support this project:
 
         self.logger = logging.getLogger('telegram')
 
-        self.updater = Updater(bot=MQBot(self._telegram_token))
+        self.updater = Updater(bot=MQBot(self._telegram_token, request=request))
         self.dispatcher = self.updater.dispatcher
 
     def help(self, bot, update):
