@@ -53,23 +53,17 @@ class MinerMixin:
             try:
                 data = Barrenero.miner(api.url, api.token)
 
-                status_message = f'*API {api.name}*\n'
-                status_message += '*Services*\n'
-                status_message += '\n'.join([f' - {service["name"]}: `{service["status"]}`'
+                response_text = f'*API {api.name}*\n'
+                response_text += '*Services*\n'
+                response_text += '\n'.join([f' - {service["name"]}: `{service["status"]}`'
                                             for service in data['services']])
 
                 for graphic in data['graphics']:
-                    status_message += f'\n\n*Graphic card #{graphic["id"]}*\n'
-                    status_message += f' - Power: `{graphic["power"]} W`\n'
-                    status_message += f' - Fan speed: `{graphic["fan"]} %`\n'
-                    status_message += f' - GPU: `{graphic["gpu_usage"]} %` - `{graphic["gpu_clock"]} Mhz`\n'
-                    status_message += f' - MEM: `{graphic["mem_usage"]} %` - `{graphic["mem_clock"]} Mhz`'
-
-                response_text = f'*Ether miner*\n' \
-                                f' - Status: {data["active"]}\n\n' \
-                                f'*Hashrate*\n' \
-                                + '\n'.join([f' - Graphic card #{h["graphic_card"]}: `{h["hashrate"]:.2f} MH/s`'
-                                             for h in data['hashrate']])
+                    response_text += f'\n\n*Graphic card #{graphic["id"]}*\n'
+                    response_text += f' - Power: `{graphic["power"]} W`\n'
+                    response_text += f' - Fan speed: `{graphic["fan"]} %`\n'
+                    response_text += f' - GPU: `{graphic["gpu_usage"]} %` - `{graphic["gpu_clock"]} Mhz`\n'
+                    response_text += f' - MEM: `{graphic["mem_usage"]} %` - `{graphic["mem_clock"]} Mhz`'
             except BarreneroRequestException as e:
                 self.logger.error(e.message)
                 response_text = f'*API {api.name} - Ether miner*\n{e.message}'
