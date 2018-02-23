@@ -65,11 +65,11 @@ class MinerMixin:
                     response_text += f' - GPU: `{graphic["gpu_usage"]} %` - `{graphic["gpu_clock"]} Mhz`\n'
                     response_text += f' - MEM: `{graphic["mem_usage"]} %` - `{graphic["mem_clock"]} Mhz`'
             except BarreneroRequestException as e:
-                self.logger.error(e.message)
+                self.logger.exception(e.message)
                 response_text = f'*API {api.name} - Ether miner*\n{e.message}'
             except (KeyError, TypeError):
                 response_text = f'*API {api.name} - Ether miner*\nCannot retrieve Ether miner status'
-                self.logger.error('Barrenero API wrong response for Ether miner status: %s', str(data))
+                self.logger.exception('Barrenero API wrong response for Ether miner status: %s', str(data))
 
         bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
                               message_id=query.message.message_id)
