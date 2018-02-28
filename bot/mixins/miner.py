@@ -75,6 +75,6 @@ class MinerMixin:
                               message_id=query.message.message_id)
 
     def add_miner_command(self):
-        self.dispatcher.add_handler(CommandHandler('miner', self.miner))
-        self.dispatcher.add_handler(CallbackQueryHandler(self.miner_status, pass_groups=True,
+        self.updater.dispatcher.add_handler(CommandHandler('miner', self.miner))
+        self.updater.dispatcher.add_handler(CallbackQueryHandler(self.miner_status, pass_groups=True,
                                                          pattern=r'\[miner_status\]\[(\d+)\]'))

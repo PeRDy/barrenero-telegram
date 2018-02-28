@@ -344,7 +344,7 @@ class StartMixin:
         Setup the bot
         """
         # Start command
-        self.dispatcher.add_handler(ConversationHandler(
+        self.updater.dispatcher.add_handler(ConversationHandler(
             entry_points=[CommandHandler('start', self.start)],
             states={
                 StartState.CHOICE_ROOT: [

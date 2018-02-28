@@ -59,7 +59,11 @@ Help us donating to support this project:
         # Read bot config from file
         config_from_file = ConfigParser()
         config_from_file.read(config)
-        self._telegram_token = config_from_file.get('telegram', 'token', fallback=None)
+        self._token = config_from_file.get('telegram', 'token', fallback=None)
+        self._url = config_from_file.get('telegram', 'url', fallback=None)
+        if not self._url.endswith('/'):
+            self._url = self._url + '/'
+        self._port = config_from_file.getint('telegram', 'port', fallback=None)
 
         # Initialize DB
         initialize_db()
@@ -67,8 +71,7 @@ Help us donating to support this project:
         self.logger = logging.getLogger('bot')
 
         request = Request(con_pool_size=8, connect_timeout=20., read_timeout=20.)
-        self.updater = Updater(bot=MQBot(self._telegram_token, request=request))
-        self.dispatcher = self.updater.dispatcher
+        self.updater = Updater(bot=MQBot(self._token, request=request))
 
     def help(self, bot, update):
         """
@@ -88,7 +91,7 @@ Help us donating to support this project:
         Setup the bot
         """
         # Help command
-        self.dispatcher.add_handler(CommandHandler('help', self.help))
+        self.updater.dispatcher.add_handler(CommandHandler('help', self.help))
 
         # Start command
         self.add_start_command()
@@ -109,11 +112,11 @@ Help us donating to support this project:
         self.add_wallet_jobs()
 
         # Error handler
-        self.dispatcher.add_error_handler(self.error)
+        self.updater.dispatcher.add_error_handler(self.error)
 
         try:
-            self.updater.start_polling(timeout=30.0)
-
+            self.updater.start_webhook(listen='0.0.0.0', port=self._port, url_path=self._token)
+            self.updater.bot.set_webhook(self._url + self._token)
             self.updater.idle()
         except:
             self.updater.stop()

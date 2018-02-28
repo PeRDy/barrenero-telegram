@@ -202,14 +202,14 @@ class EtherMixin:
                         status.stop(bot=bot, chat=api.chat.id)
 
     def add_ether_command(self):
-        self.dispatcher.add_handler(CommandHandler('ether', self.ether))
-        self.dispatcher.add_handler(CallbackQueryHandler(self.ether_restart, pass_groups=True,
+        self.updater.dispatcher.add_handler(CommandHandler('ether', self.ether))
+        self.updater.dispatcher.add_handler(CallbackQueryHandler(self.ether_restart, pass_groups=True,
                                                          pattern=r'\[ether_restart\]\[(\d+)\]'))
-        self.dispatcher.add_handler(CallbackQueryHandler(self.ether_status, pass_groups=True,
+        self.updater.dispatcher.add_handler(CallbackQueryHandler(self.ether_status, pass_groups=True,
                                                          pattern=r'\[ether_status\]\[(\d+)\]'))
-        self.dispatcher.add_handler(CallbackQueryHandler(self.ether_miner_choice, pass_groups=True,
+        self.updater.dispatcher.add_handler(CallbackQueryHandler(self.ether_miner_choice, pass_groups=True,
                                                          pattern=r'\[ether_(restart|status)\]$'))
-        self.dispatcher.add_handler(CallbackQueryHandler(self.ether_nanopool, pattern=r'\[ether_nanopool\]'))
+        self.updater.dispatcher.add_handler(CallbackQueryHandler(self.ether_nanopool, pattern=r'\[ether_nanopool\]'))
 
     def add_ether_jobs(self):
         self.updater.job_queue.run_repeating(self.ether_job_status, interval=180.0)

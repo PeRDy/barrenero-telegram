@@ -165,12 +165,12 @@ class StorjMixin:
                         status.stop(bot=bot, chat=api.chat.id)
 
     def add_storj_command(self):
-        self.dispatcher.add_handler(CommandHandler('storj', self.storj))
-        self.dispatcher.add_handler(CallbackQueryHandler(self.storj_restart, pass_groups=True,
+        self.updater.dispatcher.add_handler(CommandHandler('storj', self.storj))
+        self.updater.dispatcher.add_handler(CallbackQueryHandler(self.storj_restart, pass_groups=True,
                                                          pattern=r'\[storj_restart\]\[(\d+)\]'))
-        self.dispatcher.add_handler(CallbackQueryHandler(self.storj_status, pass_groups=True,
+        self.updater.dispatcher.add_handler(CallbackQueryHandler(self.storj_status, pass_groups=True,
                                                          pattern=r'\[storj_status\]\[(\d+)\]'))
-        self.dispatcher.add_handler(CallbackQueryHandler(self.storj_miner_choice, pass_groups=True,
+        self.updater.dispatcher.add_handler(CallbackQueryHandler(self.storj_miner_choice, pass_groups=True,
                                                          pattern=r'\[storj_(status|restart)\]$'))
 
     def add_storj_jobs(self):
