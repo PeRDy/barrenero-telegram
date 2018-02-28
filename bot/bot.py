@@ -1,10 +1,11 @@
 import logging
-from configparser import ConfigParser
+from configparser import ConfigParser, NoSectionError, NoOptionError
 
 from telegram import Bot, ParseMode
 from telegram.ext import CommandHandler, Updater, messagequeue as mq
 from telegram.utils.request import Request
 
+from bot.exceptions import ImproperlyConfigured
 from bot.mixins.ether import EtherMixin
 from bot.mixins.miner import MinerMixin
 from bot.mixins.start import StartMixin
@@ -56,19 +57,23 @@ Help us donating to support this project:
     def __init__(self, config='setup.cfg'):
         super().__init__()
 
+        self.logger = logging.getLogger('bot')
+
         # Read bot config from file
-        config_from_file = ConfigParser()
-        config_from_file.read(config)
-        self._token = config_from_file.get('telegram', 'token', fallback=None)
-        self._url = config_from_file.get('telegram', 'url', fallback=None)
-        if not self._url.endswith('/'):
-            self._url = self._url + '/'
-        self._port = config_from_file.getint('telegram', 'port', fallback=None)
+        try:
+            config_from_file = ConfigParser()
+            config_from_file.read(config)
+            self._token = config_from_file.get('telegram', 'token')
+            self._url = config_from_file.get('telegram', 'url')
+            if not self._url.endswith('/'):
+                self._url = self._url + '/'
+            self._port = config_from_file.getint('telegram', 'port')
+        except (NoSectionError, NoOptionError) as e:
+            self.logger.exception('Wrong config')
+            raise ImproperlyConfigured('Wrong config') from e
 
         # Initialize DB
         initialize_db()
-
-        self.logger = logging.getLogger('bot')
 
         request = Request(con_pool_size=8, connect_timeout=20., read_timeout=20.)
         self.updater = Updater(bot=MQBot(self._token, request=request))
@@ -115,7 +120,9 @@ Help us donating to support this project:
         self.updater.dispatcher.add_error_handler(self.error)
 
         try:
+            self.logger.info('Listening 0.0.0.0:%d', self._port)
             self.updater.start_webhook(listen='0.0.0.0', port=self._port, url_path=self._token)
+            self.logger.info('Webhook: %s', self._url + self._token)
             self.updater.bot.set_webhook(self._url + self._token)
             self.updater.idle()
         except:

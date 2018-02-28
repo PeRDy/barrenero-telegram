@@ -51,7 +51,7 @@ class WalletMixin:
         """
         Check last transaction and notify if there are new payments.
         """
-        # Create new state machines
+        self.logger.debug('Job: Check transactions')
         for chat in Chat.select():
             api = random.choice(chat.apis)
             data = Barrenero.wallet(api.url, api.token)

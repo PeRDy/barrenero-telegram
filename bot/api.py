@@ -9,18 +9,21 @@ logger = logging.getLogger(__name__)
 
 
 class Barrenero:
+    timeout = (3, 30)
+
     @staticmethod
     def _get(base_url: str, path: str, token: str) -> Union[List[Any], Dict[str, Any]]:
         try:
             url = base_url + path
             headers = {'Authorization': f'Token {token}'}
 
-            response = requests.get(url=url, headers=headers)
-            response.raise_for_status()
+            with requests.get(url=url, headers=headers, timeout=Barrenero.timeout) as response:
+                response.raise_for_status()
+                result = response.json()
         except requests.HTTPError as e:
             raise BarreneroRequestException('Cannot request Barrenero API') from e
 
-        return response.json()
+        return result
 
     @staticmethod
     def _post(base_url: str, path: str, token: str, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -28,12 +31,13 @@ class Barrenero:
             url = base_url + path
             headers = {'Authorization': f'Token {token}'}
 
-            response = requests.post(url=url, headers=headers, data=data)
-            response.raise_for_status()
+            with requests.post(url=url, headers=headers, data=data, timeout=Barrenero.timeout) as response:
+                response.raise_for_status()
+                result = response.json()
         except requests.HTTPError as e:
             raise BarreneroRequestException('Cannot request Barrenero API') from e
 
-        return response.json()
+        return result
 
     @staticmethod
     def get_token_or_register(url: str, username: str, password: str, account: str=None, api_password: str=None) \
@@ -42,19 +46,18 @@ class Barrenero:
             # Try to register user
             register_url = f'{url}/api/v1/auth/register/'
             data = {'username': username, 'password': password, 'account': account, 'api_password': api_password}
-            response_register = requests.post(url=register_url, data=data)
+            with requests.post(url=register_url, data=data, timeout=Barrenero.timeout) as response_register:
+                # If user is registered, try to get token using username and password
+                if response_register.status_code == 409:
+                    login_url = f'{url}/api/v1/auth/user/'
+                    data = {'username': username, 'password': password}
 
-            # If user is registered, try to get token using username and password
-            if response_register.status_code == 409:
-                login_url = f'{url}/api/v1/auth/user/'
-                data = {'username': username, 'password': password}
-
-                response_user = requests.post(url=login_url, data=data)
-                response_user.raise_for_status()
-                payload = response_user.json()
-            else:
-                response_register.raise_for_status()
-                payload = response_register.json()
+                    with requests.post(url=login_url, data=data, timeout=Barrenero.timeout) as response_user:
+                        response_user.raise_for_status()
+                        payload = response_user.json()
+                else:
+                    response_register.raise_for_status()
+                    payload = response_register.json()
         except requests.HTTPError:
             raise
         else:

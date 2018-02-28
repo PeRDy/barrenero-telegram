@@ -139,6 +139,8 @@ class StorjMixin:
         """
         Check miner status
         """
+        self.logger.debug('Job: Check Storj status')
+
         # Create new state machines
         global status_machines
 

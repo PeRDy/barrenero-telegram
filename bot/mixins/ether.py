@@ -178,6 +178,8 @@ class EtherMixin:
         """
         Check miner status
         """
+        self.logger.debug('Job: Check Ether status')
+
         # Create new state machines
         global status_machines
 
