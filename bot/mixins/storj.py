@@ -62,7 +62,7 @@ class StorjMixin:
 
     def storj_restart(self, bot, update, groups):
         """
-        Restart storj systemd service.
+        Restart storj service.
         """
         query = update.callback_query
         api_id = groups[0]
@@ -74,15 +74,18 @@ class StorjMixin:
             api = API.get(id=api_id)
 
             Barrenero.restart(api.url, api.token, 'Storj')
+
+            response_text = f'*API {api.name}*\n' \
+                            f'Restarting Storj.'
         except peewee.DoesNotExist:
             self.logger.error('Chat unregistered')
             response_text = 'Configure me first'
         except BarreneroRequestException as e:
             self.logger.exception(e.message)
             response_text = e.message
-        else:
-            response_text = f'*API {api.name}*\n' \
-                            f'Restarting Storj.'
+        except:
+            self.logger.exception('Cannot restart API %s Storj miner', api.name)
+            response_text = f'*API {api.name} - Storj miner*\nCannot restart miner'
 
         bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
                               message_id=query.message.message_id)
@@ -99,38 +102,39 @@ class StorjMixin:
 
         try:
             api = API.get(id=api_id)
+            data = Barrenero.storj(api.url, api.token)
+
+            nodes_status = []
+            for node in data:
+                shared = node['shared'] if node['shared'] is not None else 'Unknown'
+                shared_percent = f'{node["shared_percent"]}%' if node['shared_percent'] is not None else 'Unknown'
+                data_received = node['data_received'] if node['data_received'] is not None else 'Unknown'
+                delta = f'{node["delta"]:d} ms' if node['delta'] is not None else 'Unknown'
+                response_time = f'{node["response_time"]:.2f} ms' if node['response_time'] is not None else 'Unknown'
+                reputation = f'{node["reputation"]:d}/5000' if node['reputation'] is not None else 'Unknown'
+                version = node["version"] if node['version'] is not None else 'Unknown'
+                nodes_status.append(
+                    f'*Storj node #{node["id"]}*\n'
+                    f' - Status: `{node["status"]}`\n'
+                    f' - Uptime: `{node["uptime"]} ({node["restarts"]} restarts)`\n'
+                    f' - Shared: `{shared} ({shared_percent})`\n'
+                    f' - Data received: `{data_received}`\n'
+                    f' - Peers/Allocs: `{node["peers"]:d}` / `{node["allocs"]:d}`\n'
+                    f' - Delta: `{delta}`\n'
+                    f' - Path: `{node["config_path"]}`\n'
+                    f' - Response Time: `{response_time}`\n'
+                    f' - Reputation: `{reputation}`\n'
+                    f' - Version: `{version}`')
+            response_text = f'*API {api.name}*\n' + '\n\n'.join(nodes_status)
         except peewee.DoesNotExist:
             self.logger.error('Chat unregistered')
             response_text = 'Configure me first'
-        else:
-            try:
-                data = Barrenero.storj(api.url, api.token)
-            except BarreneroRequestException as e:
-                self.logger.exception(e.message)
-                response_text = f'*API {api}*\nCannot retrieve Storj miner status'
-            else:
-                nodes_status = []
-                for node in data:
-                    shared = node['shared'] if node['shared'] is not None else 'Unknown'
-                    shared_percent = f'{node["shared_percent"]}%' if node['shared_percent'] is not None else 'Unknown'
-                    data_received = node['data_received'] if node['data_received'] is not None else 'Unknown'
-                    delta = f'{node["delta"]:d} ms' if node['delta'] is not None else 'Unknown'
-                    response_time = f'{node["response_time"]:.2f} ms' if node['response_time'] is not None else 'Unknown'
-                    reputation = f'{node["reputation"]:d}/5000' if node['reputation'] is not None else 'Unknown'
-                    version = node["version"] if node['version'] is not None else 'Unknown'
-                    nodes_status.append(
-                        f'*Storj node #{node["id"]}*\n'
-                        f' - Status: `{node["status"]}`\n'
-                        f' - Uptime: `{node["uptime"]} ({node["restarts"]} restarts)`\n'
-                        f' - Shared: `{shared} ({shared_percent})`\n'
-                        f' - Data received: `{data_received}`\n'
-                        f' - Peers/Allocs: `{node["peers"]:d}` / `{node["allocs"]:d}`\n'
-                        f' - Delta: `{delta}`\n'
-                        f' - Path: `{node["config_path"]}`\n'
-                        f' - Response Time: `{response_time}`\n'
-                        f' - Reputation: `{reputation}`\n'
-                        f' - Version: `{version}`')
-                response_text = f'*API {api.name}*\n' + '\n\n'.join(nodes_status)
+        except BarreneroRequestException as e:
+            self.logger.exception(e.message)
+            response_text = f'*API {api}*\nCannot retrieve Storj miner status'
+        except:
+            self.logger.exception('Error retrieving storj status')
+            response_text = 'Cannot retrieve storj status'
 
         bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
                               message_id=query.message.message_id)
@@ -169,11 +173,11 @@ class StorjMixin:
     def add_storj_command(self):
         self.updater.dispatcher.add_handler(CommandHandler('storj', self.storj))
         self.updater.dispatcher.add_handler(CallbackQueryHandler(self.storj_restart, pass_groups=True,
-                                                         pattern=r'\[storj_restart\]\[(\d+)\]'))
+                                                                 pattern=r'\[storj_restart\]\[(\d+)\]'))
         self.updater.dispatcher.add_handler(CallbackQueryHandler(self.storj_status, pass_groups=True,
-                                                         pattern=r'\[storj_status\]\[(\d+)\]'))
+                                                                 pattern=r'\[storj_status\]\[(\d+)\]'))
         self.updater.dispatcher.add_handler(CallbackQueryHandler(self.storj_miner_choice, pass_groups=True,
-                                                         pattern=r'\[storj_(status|restart)\]$'))
+                                                                 pattern=r'\[storj_(status|restart)\]$'))
 
     def add_storj_jobs(self):
         self.updater.job_queue.run_repeating(self.storj_job_status, interval=300.0)

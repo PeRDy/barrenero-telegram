@@ -25,13 +25,7 @@ class WalletMixin:
             chat = Chat.get(id=chat_id)
             api = random.choice(chat.apis)
             data = Barrenero.wallet(api.url, api.token)
-        except peewee.DoesNotExist:
-            self.logger.error('Chat unregistered')
-            response_text = 'Configure me first'
-        except BarreneroRequestException as e:
-            self.logger.exception(e.message)
-            response_text = e.message
-        else:
+
             response_text = f'*Tokens*\n'
             response_text += '\n'.join(
                 [f' - {t["name"]}: `{t["balance"]} {t["symbol"]}` ({t.get("balance_usd", "Unknown")} $)'
@@ -44,6 +38,15 @@ class WalletMixin:
                                  f' - Source: `{tx["source"]}`\n' \
                                  f' - Value: `{tx["value"]} {tx["token"]["symbol"]}`\n' \
                                  f' - Date: `{humanize_iso_date(tx["timestamp"])}`'
+        except peewee.DoesNotExist:
+            self.logger.error('Chat unregistered')
+            response_text = 'Configure me first'
+        except BarreneroRequestException as e:
+            self.logger.exception(e.message)
+            response_text = e.message
+        except:
+            self.logger.exception('Error retrieving wallet info')
+            response_text = 'Cannot retrieve wallet info'
 
         bot.send_message(chat_id, response_text, parse_mode=ParseMode.MARKDOWN)
 

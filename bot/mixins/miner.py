@@ -43,33 +43,29 @@ class MinerMixin:
 
         try:
             api = API.get(id=api_id)
+
+            data = Barrenero.miner(api.url, api.token)
+
+            response_text = f'*API {api.name}*\n'
+            response_text += '*Services*\n'
+            response_text += '\n'.join([f' - {service["name"]}: `{service["status"]}`'
+                                        for service in data['services']])
+
+            for graphic in data['graphics']:
+                response_text += f'\n\n*Graphic card #{graphic["id"]}*\n'
+                response_text += f' - Power: `{graphic["power"]} W`\n'
+                response_text += f' - Fan speed: `{graphic["fan"]} %`\n'
+                response_text += f' - GPU: `{graphic["gpu_usage"]} %` - `{graphic["gpu_clock"]} Mhz`\n'
+                response_text += f' - MEM: `{graphic["mem_usage"]} %` - `{graphic["mem_clock"]} Mhz`'
         except peewee.DoesNotExist:
             self.logger.error('Chat unregistered')
             response_text = 'Configure me first'
         except BarreneroRequestException as e:
             self.logger.exception(e.message)
-            response_text = e.message
-        else:
-            try:
-                data = Barrenero.miner(api.url, api.token)
-
-                response_text = f'*API {api.name}*\n'
-                response_text += '*Services*\n'
-                response_text += '\n'.join([f' - {service["name"]}: `{service["status"]}`'
-                                            for service in data['services']])
-
-                for graphic in data['graphics']:
-                    response_text += f'\n\n*Graphic card #{graphic["id"]}*\n'
-                    response_text += f' - Power: `{graphic["power"]} W`\n'
-                    response_text += f' - Fan speed: `{graphic["fan"]} %`\n'
-                    response_text += f' - GPU: `{graphic["gpu_usage"]} %` - `{graphic["gpu_clock"]} Mhz`\n'
-                    response_text += f' - MEM: `{graphic["mem_usage"]} %` - `{graphic["mem_clock"]} Mhz`'
-            except BarreneroRequestException as e:
-                self.logger.exception(e.message)
-                response_text = f'*API {api.name} - Ether miner*\n{e.message}'
-            except (KeyError, TypeError):
-                response_text = f'*API {api.name} - Ether miner*\nCannot retrieve Ether miner status'
-                self.logger.exception('Barrenero API wrong response for Ether miner status: %s', str(data))
+            response_text = f'*API {api.name} - Ether miner*\n{e.message}'
+        except:
+            response_text = f'*API {api.name} - Ether miner*\nCannot retrieve Ether miner status'
+            self.logger.exception('Barrenero API wrong response for Ether miner status: %s', str(data))
 
         bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
                               message_id=query.message.message_id)
@@ -77,4 +73,4 @@ class MinerMixin:
     def add_miner_command(self):
         self.updater.dispatcher.add_handler(CommandHandler('miner', self.miner))
         self.updater.dispatcher.add_handler(CallbackQueryHandler(self.miner_status, pass_groups=True,
-                                                         pattern=r'\[miner_status\]\[(\d+)\]'))
+                                                                 pattern=r'\[miner_status\]\[(\d+)\]'))

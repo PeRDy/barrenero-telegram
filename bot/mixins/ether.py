@@ -55,31 +55,30 @@ class EtherMixin:
             chat = Chat.get(id=chat_id)
             api = random.choice(chat.apis)
             data = Barrenero.ether(api.url, api.token)
+
+            response_text = f'*Ether miner*\n' \
+                            f' - Balance: `{data["nanopool"]["balance"]["confirmed"]} ETH`\n\n' \
+                            f'*Hashrate*\n' \
+                            f' - Current: `{data["nanopool"]["hashrate"]["current"]} MH/s`\n' \
+                            f' - 1 hour: `{data["nanopool"]["hashrate"]["one_hour"]} MH/s`\n' \
+                            f' - 3 hours: `{data["nanopool"]["hashrate"]["three_hours"]} MH/s`\n' \
+                            f' - 6 hours: `{data["nanopool"]["hashrate"]["six_hours"]} MH/s`\n' \
+                            f' - 12 hours: `{data["nanopool"]["hashrate"]["twelve_hours"]} MH/s`\n' \
+                            f' - 24 hours: `{data["nanopool"]["hashrate"]["twenty_four_hours"]} MH/s`\n\n' \
+                            f'*Last payment*\n' \
+                            f' - Date: `{humanize_iso_date(data["nanopool"]["last_payment"]["date"])}`\n' \
+                            f' - Value: `{data["nanopool"]["last_payment"]["value"]} ETH`\n\n' \
+                            f'*Workers*\n' + \
+                            '\n'.join(f' - {w}: `{v} MH/s`' for w, v in data['nanopool']['workers'].items())
         except peewee.DoesNotExist:
             self.logger.error('Chat unregistered')
             response_text = 'Configure me first'
         except BarreneroRequestException as e:
             self.logger.exception(e.message)
             response_text = e.message
-        else:
-            try:
-                response_text = f'*Ether miner*\n' \
-                                f' - Balance: `{data["nanopool"]["balance"]["confirmed"]} ETH`\n\n' \
-                                f'*Hashrate*\n' \
-                                f' - Current: `{data["nanopool"]["hashrate"]["current"]} MH/s`\n' \
-                                f' - 1 hour: `{data["nanopool"]["hashrate"]["one_hour"]} MH/s`\n' \
-                                f' - 3 hours: `{data["nanopool"]["hashrate"]["three_hours"]} MH/s`\n' \
-                                f' - 6 hours: `{data["nanopool"]["hashrate"]["six_hours"]} MH/s`\n' \
-                                f' - 12 hours: `{data["nanopool"]["hashrate"]["twelve_hours"]} MH/s`\n' \
-                                f' - 24 hours: `{data["nanopool"]["hashrate"]["twenty_four_hours"]} MH/s`\n\n' \
-                                f'*Last payment*\n' \
-                                f' - Date: `{humanize_iso_date(data["nanopool"]["last_payment"]["date"])}`\n' \
-                                f' - Value: `{data["nanopool"]["last_payment"]["value"]} ETH`\n\n' \
-                                f'*Workers*\n' + \
-                                '\n'.join(f' - {w}: `{v} MH/s`' for w, v in data['nanopool']['workers'].items())
-            except (KeyError, TypeError):
-                response_text = 'Cannot retrieve Nanopool info'
-                self.logger.exception('Barrenero API wrong response for Nanopool info: %s', str(data))
+        except:
+            response_text = 'Cannot retrieve Nanopool info'
+            self.logger.exception('Barrenero API wrong response for Nanopool info: %s', str(data))
 
         bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=query.message.chat_id,
                               message_id=query.message.message_id)
@@ -113,7 +112,7 @@ class EtherMixin:
 
     def ether_restart(self, bot, update, groups):
         """
-        Restart ether systemd service.
+        Restart ether service.
         """
         query = update.callback_query
         api_id = groups[0]
@@ -125,16 +124,20 @@ class EtherMixin:
             api = API.get(id=api_id)
             Barrenero.restart(api.url, api.token, 'Ether')
 
+            response_text = f'*API {api.name}*\n' \
+                            f'Restarting Ether.'
         except peewee.DoesNotExist:
             self.logger.error('Chat unregistered')
             response_text = 'Configure me first'
-            bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
-                                  message_id=query.message.message_id)
-        else:
-            response_text = f'*API {api.name}*\n' \
-                            f'Restarting Ether.'
-            bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
-                                  message_id=query.message.message_id)
+        except BarreneroRequestException as e:
+            self.logger.exception(e.message)
+            response_text = e.message
+        except:
+            self.logger.exception('Cannot restart API %s Ether miner', api.name)
+            response_text = f'*API {api.name} - Ether miner*\nCannot restart miner'
+
+        bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
+                              message_id=query.message.message_id)
 
     def ether_status(self, bot, update, groups):
         """
@@ -148,28 +151,24 @@ class EtherMixin:
 
         try:
             api = API.get(id=api_id)
+
+            data = Barrenero.ether(api.url, api.token)
+
+            response_text = f'*API {api.name}*\n' \
+                            f'*Ether miner*\n' \
+                            f' - Status: {data["active"]}\n\n' \
+                            f'*Hashrate*\n' \
+                            + '\n'.join([f' - Graphic card #{h["graphic_card"]}: `{h["hashrate"]:.2f} MH/s`'
+                                         for h in data['hashrate']])
         except peewee.DoesNotExist:
             self.logger.error('Chat unregistered')
             response_text = 'Configure me first'
         except BarreneroRequestException as e:
             self.logger.exception(e.message)
-            response_text = e.message
-        else:
-            try:
-                data = Barrenero.ether(api.url, api.token)
-
-                response_text = f'*API {api.name}*\n' \
-                                f'*Ether miner*\n' \
-                                f' - Status: {data["active"]}\n\n' \
-                                f'*Hashrate*\n' \
-                                + '\n'.join([f' - Graphic card #{h["graphic_card"]}: `{h["hashrate"]:.2f} MH/s`'
-                                             for h in data['hashrate']])
-            except BarreneroRequestException as e:
-                self.logger.exception(e.message)
-                response_text = f'*API {api.name} - Ether miner*\n{e.message}'
-            except (KeyError, TypeError):
-                response_text = f'*API {api.name} - Ether miner*\nCannot retrieve Ether miner status'
-                self.logger.exception('Barrenero API wrong response for Ether miner status: %s', str(data))
+            response_text = f'*API {api.name} - Ether miner*\n{e.message}'
+        except:
+            response_text = f'*API {api.name} - Ether miner*\nCannot retrieve Ether miner status'
+            self.logger.exception('Barrenero API wrong response for Ether miner status: %s', str(data))
 
         bot.edit_message_text(text=response_text, parse_mode=ParseMode.MARKDOWN, chat_id=chat_id,
                               message_id=query.message.message_id)
@@ -206,11 +205,11 @@ class EtherMixin:
     def add_ether_command(self):
         self.updater.dispatcher.add_handler(CommandHandler('ether', self.ether))
         self.updater.dispatcher.add_handler(CallbackQueryHandler(self.ether_restart, pass_groups=True,
-                                                         pattern=r'\[ether_restart\]\[(\d+)\]'))
+                                                                 pattern=r'\[ether_restart\]\[(\d+)\]'))
         self.updater.dispatcher.add_handler(CallbackQueryHandler(self.ether_status, pass_groups=True,
-                                                         pattern=r'\[ether_status\]\[(\d+)\]'))
+                                                                 pattern=r'\[ether_status\]\[(\d+)\]'))
         self.updater.dispatcher.add_handler(CallbackQueryHandler(self.ether_miner_choice, pass_groups=True,
-                                                         pattern=r'\[ether_(restart|status)\]$'))
+                                                                 pattern=r'\[ether_(restart|status)\]$'))
         self.updater.dispatcher.add_handler(CallbackQueryHandler(self.ether_nanopool, pattern=r'\[ether_nanopool\]'))
 
     def add_ether_jobs(self):
