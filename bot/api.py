@@ -20,7 +20,7 @@ class Barrenero:
             with requests.get(url=url, headers=headers, timeout=Barrenero.timeout) as response:
                 response.raise_for_status()
                 result = response.json()
-        except requests.HTTPError as e:
+        except requests.RequestException as e:
             raise BarreneroRequestException('Cannot request Barrenero API') from e
 
         return result
@@ -34,7 +34,7 @@ class Barrenero:
             with requests.post(url=url, headers=headers, data=data, timeout=Barrenero.timeout) as response:
                 response.raise_for_status()
                 result = response.json()
-        except requests.HTTPError as e:
+        except requests.RequestException as e:
             raise BarreneroRequestException('Cannot request Barrenero API') from e
 
         return result
@@ -58,8 +58,8 @@ class Barrenero:
                 else:
                     response_register.raise_for_status()
                     payload = response_register.json()
-        except requests.HTTPError:
-            raise
+        except requests.RequestException as e:
+            raise BarreneroRequestException('Cannot request Barrenero API') from e
         else:
             config = {
                 'token': payload['token'],

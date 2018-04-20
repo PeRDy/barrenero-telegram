@@ -6,6 +6,7 @@ from telegram.ext import CommandHandler, ConversationHandler, Filters, MessageHa
 from telegram.ext.regexhandler import RegexHandler
 
 from bot.api import Barrenero
+from bot.exceptions import BarreneroRequestException
 from bot.models import API, Chat
 
 
@@ -260,6 +261,7 @@ class StartMixin:
             )
         except:
             self.logger.exception('Cannot register Barrenero API')
+            update.message.reply_text('Cannot register Barrenero API')
         else:
             update.message.reply_text('Api stored successfully')
 
