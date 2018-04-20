@@ -13,13 +13,10 @@ RUN apk --no-cache add \
 RUN mkdir -p /srv/apps/$APP/logs
 WORKDIR /srv/apps/$APP
 
-RUN python -m pip install --upgrade Cython
-
 # Install pip requirements
-COPY requirements.txt constraints.txt /srv/apps/$APP/
-RUN python -m pip install --upgrade pip && \
-    python -m pip install --no-cache-dir -r requirements.txt -c constraints.txt && \
-    rm -rf $HOME/.cache/pip/*
+COPY Pipfile Pipfile.lock /srv/apps/$APP/
+RUN python -m pip install --upgrade pip pipenv && \
+    pipenv install --system --deploy --ignore-pipfile
 
 # Copy application
 COPY . /srv/apps/$APP/
