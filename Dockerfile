@@ -1,5 +1,5 @@
 FROM python:alpine
-LABEL maintainer="José Antonio Perdiguero López <perdy.hh@gmail.com>"
+LABEL maintainer="José Antonio Perdiguero López <perdy@perdy.io>"
 
 ENV APP=barrenero-telegram
 
