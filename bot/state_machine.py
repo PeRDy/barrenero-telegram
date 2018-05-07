@@ -15,10 +15,12 @@ class StatusStateMachine(Machine):
     states = [StatusState.INACTIVE.name, StatusState.ACTIVE.name]
     initial = StatusState.INACTIVE.name
     transitions = [
-        {'trigger': 'start', 'source': StatusState.INACTIVE.name, 'dest': StatusState.ACTIVE.name, 'after': 'notify_start'},
+        {'trigger': 'start', 'source': StatusState.INACTIVE.name, 'dest': StatusState.ACTIVE.name,
+         'after': 'notify_start'},
         {'trigger': 'start', 'source': StatusState.ACTIVE.name, 'dest': StatusState.ACTIVE.name},
         {'trigger': 'stop', 'source': StatusState.INACTIVE.name, 'dest': StatusState.INACTIVE.name},
-        {'trigger': 'stop', 'source': StatusState.ACTIVE.name, 'dest': StatusState.INACTIVE.name, 'after': 'notify_stop'},
+        {'trigger': 'stop', 'source': StatusState.ACTIVE.name, 'dest': StatusState.INACTIVE.name,
+         'after': 'notify_stop'},
     ]
 
     def __init__(self, service, api):
@@ -27,12 +29,13 @@ class StatusStateMachine(Machine):
         self.api = api
 
     def notify_start(self, bot, chat):
-        bot.send_message(chat_id=chat, text=f'Service `{self.service}` from API `{self.api}` is active and running now',
+        bot.send_message(chat_id=chat, text=f'Service `{self.service}` from API `{self.api}` is *active* and running '
+                                            f'now',
                          parse_mode=ParseMode.MARKDOWN)
 
     def notify_stop(self, bot, chat):
         bot.send_message(chat_id=chat, text=f'Service `{self.service}` from API `{self.api}` stops working and is now '
-                                            f'inactive',
+                                            f'*inactive*',
                          parse_mode=ParseMode.MARKDOWN)
 
     @property
